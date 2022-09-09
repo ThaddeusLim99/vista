@@ -9,7 +9,7 @@ from vista.entities.agents.Dynamics import tireangle2curvature
 
 
 def main(args):
-    world = vista.World(args.trace_path, trace_config={'road_width': 4})
+    world = vista.World(args.trace_path, trace_config={'road_width': 4, "master_sensor": "lidar_3d"})
     car = world.spawn_agent(
         config={
             'length': 5.,
