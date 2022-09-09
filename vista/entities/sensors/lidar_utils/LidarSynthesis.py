@@ -77,8 +77,8 @@ class LidarSynthesis:
         except AttributeError:
             with pkg_resources.path(vista, 'resources') as p:
                 rsrc_path = p
-        self.avg_mask = np.load(str(rsrc_path / "Lidar/avg_mask2.npy"))
-        self.avg_mask_pt = torch.tensor(self.avg_mask).to(self.device)
+        # self.avg_mask = np.load(str(rsrc_path / "Lidar/avg_mask2.npy"))
+        # self.avg_mask_pt = torch.tensor(self.avg_mask).to(self.device)
 
         self.load_model = load_model
         self.render_model = None
@@ -98,6 +98,7 @@ class LidarSynthesis:
         trans: np.ndarray,
         rot: np.ndarray,
         pcd: np.ndarray,
+        densification = False,
     ) -> Tuple[Pointcloud, np.ndarray]:
         """ Apply rigid transformation to a dense pointcloud and return new
         dense representation or sparse pointcloud.
@@ -128,22 +129,37 @@ class LidarSynthesis:
         occlusions = self._cull_occlusions(sparse[:, :, 0])
         sparse[occlusions[:, 0], occlusions[:, 1]] = np.nan
 
-        # Densify the image before masking
-        dense = self._sparse2dense(sparse, method="nn")
+        if densification:
+            # Filter to the new pointcloud to match the desired output lidar specs
+            new_pcd = new_pcd[(new_pcd.yaw > self._out_fov_rad[0, 0])
+                            & (new_pcd.yaw < self._out_fov_rad[0, 1])]
+            new_pcd = new_pcd[(new_pcd.pitch > self._out_fov_rad[1, 0])
+                            & (new_pcd.pitch < self._out_fov_rad[1, 1])]
+            # pitch = torch.arcsin(new_pcd.z / new_pcd.dist)
+            # new_pcd = new_pcd[pitch < (14.0 / 180 * np.pi)]
+            new_pcd = new_pcd.numpy()
 
-        # Sample the image to simulate active LiDAR using neural masking
-        new_pcd = self._dense2pcd(dense)
+            return (new_pcd, dense)
+        
+        else:
+            fov_range = self._fov_rad[:, [1]] - self._fov_rad[:, [0]]
+            step = fov_range / self._dims
+            angles = np.empty((self._dims[1, 0], self._dims[0, 0], 2),
+                        np.float32)
+            angles.fill(np.nan)
+            for i in range(-int(self._dims[1, 0]/2), int(self._dims[1, 0]/2)):
+                for j in range(-int(self._dims[0, 0]/2), int(self._dims[0, 0]/2)):
+                    angles[i+int(self._dims[1, 0]/2)][j+int(self._dims[0, 0]/2)][0] = step[1]*(i)
+                    angles[i+int(self._dims[1, 0]/2)][j+int(self._dims[0, 0]/2)][1] = step[0]*(j)
 
-        # Filter to the new pointcloud to match the desired output lidar specs
-        new_pcd = new_pcd[(new_pcd.yaw > self._out_fov_rad[0, 0])
-                          & (new_pcd.yaw < self._out_fov_rad[0, 1])]
-        new_pcd = new_pcd[(new_pcd.pitch > self._out_fov_rad[1, 0])
-                          & (new_pcd.pitch < self._out_fov_rad[1, 1])]
-        # pitch = torch.arcsin(new_pcd.z / new_pcd.dist)
-        # new_pcd = new_pcd[pitch < (14.0 / 180 * np.pi)]
-        new_pcd = new_pcd.numpy()
+            x = np.array(sparse[:,:,0].cpu().numpy()*np.cos(angles[:,:,0])*np.cos(angles[:,:,1])).reshape([self._dims[1, 0]*self._dims[0, 0], 1])
+            y = np.array(sparse[:,:,0].cpu().numpy()*np.cos(angles[:,:,0])*np.sin(angles[:,:,1])).reshape([self._dims[1, 0]*self._dims[0, 0], 1])
+            z = -np.array(sparse[:,:,0].cpu().numpy()*np.sin(angles[:,:,0])).reshape([self._dims[1, 0]*self._dims[0, 0], 1])
+            xyz = np.append(np.append(x, y, axis = 1), z, axis = 1)
 
-        return (new_pcd, dense)
+            np.savetxt('./examples/vista_traces/lidar/output.csv', xyz, delimiter=',', fmt='%f')
+
+            return sparse, None
 
     def _pcd2sparse(self,
                     pcd: Pointcloud,
