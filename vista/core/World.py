@@ -109,8 +109,11 @@ class World:
             trace_reset_probs[i] = trace.num_of_frames
         trace_reset_probs /= np.sum(trace_reset_probs)
 
-        new_trace_index = self._rng.choice(trace_reset_probs.shape[0],
-                                           p=trace_reset_probs)
+        try:
+            new_trace_index = self._rng.choice(trace_reset_probs.shape[0],
+                                            p=trace_reset_probs)
+        except ValueError:
+            new_trace_index = 0
 
         return new_trace_index
 

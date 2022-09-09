@@ -45,6 +45,8 @@ class MultiSensor:
                                          delimiter=',',
                                          skip_header=1,
                                          dtype=np.float64)
+                    if len(data.shape) == 1:
+                        data = np.array([data])
                     frames, times = (data[:, 0], data[:, 1])
                 elif ext == ".h5":
                     f = h5py.File(fpath, "r")
@@ -113,6 +115,8 @@ class MultiSensor:
                         break
                     else:
                         pointer += 1
+            if frames[sensor] == []:
+                frames[sensor] = [0]
 
         return frames
 
