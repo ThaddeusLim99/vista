@@ -310,7 +310,7 @@ class Display:
                         ax.plot(noodle[:, 0], noodle[:, 1], '-r', linewidth=3)
 
                     else:  # dense image
-                        obs = np.roll(obs, -obs.shape[1] // 4, axis=1)  # shift
+                        obs = np.roll(obs.cpu(), -obs.cpu().shape[1] // 4, axis=1)  # shift
                         obs = np.concatenate(np.split(obs, 2, axis=1),
                                              0)  # stack
                         obs = np.clip(4 * obs, 0, 255).astype(np.uint8)  # norm
