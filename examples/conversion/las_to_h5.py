@@ -19,7 +19,7 @@ def main(args):
         order="gps_time",
     )[0]
 
-    pov = trajectory[150]
+    pov = trajectory[10000]
     pov_next = trajectory[151]
     pov_X = pov["X"]
     pov_Y = pov["Y"]
@@ -69,12 +69,12 @@ def main(args):
         fmt="%f",
     )
 
-    with h5py.File(".".join(args.input.split(".")[:-1]) + ".h5", "w") as f:
+    with h5py.File("/".join(args.input.split("/")[:-1]) + "/lidar_3d.h5", "w") as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
         f["intensity"] = [las.intensity]
 
-    f2 = h5py.File(".".join(args.input.split(".")[:-1]) + ".h5", "r")
+    f2 = h5py.File("/".join(args.input.split("/")[:-1]) + "/lidar_3d.h5", "r")
     print(f2["timestamp"])
     print(f2["xyz"])
     print(f2["intensity"])
