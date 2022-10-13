@@ -16,7 +16,7 @@ tensor_or_ndarray = Union[torch.Tensor, np.ndarray]
 
 
 class LidarSynthesis:
-    """ A Lidar synthesizer that simulates point cloud from novel viewpoint around
+    """A Lidar synthesizer that simulates point cloud from novel viewpoint around
     a pre-collected Lidar sweep. At a high level, it involves (1) performing rigid
     transformation on point cloud based on given viewpoint change (2) projecting 3D
     point cloud to 2D image space with angle coordinates (3) densifying the sparse
@@ -34,23 +34,25 @@ class LidarSynthesis:
         load_model (bool): Whether to load Lidar densifier model; default to ``True``.
 
     """
-    def __init__(self,
-                 input_yaw_fov: Tuple[float, float],
-                 input_pitch_fov: Tuple[float, float],
-                 yaw_fov: Optional[Tuple[float, float]] = None,
-                 pitch_fov: Optional[Tuple[float, float]] = None,
-                 yaw_res: float = 0.1,
-                 pitch_res: float = 0.1,
-                 culling_r: int = 1,
-                 load_model: bool = True,
-                 **kwargs):
+
+    def __init__(
+        self,
+        input_yaw_fov: Tuple[float, float],
+        input_pitch_fov: Tuple[float, float],
+        yaw_fov: Optional[Tuple[float, float]] = None,
+        pitch_fov: Optional[Tuple[float, float]] = None,
+        yaw_res: float = 0.1,
+        pitch_res: float = 0.1,
+        culling_r: int = 1,
+        load_model: bool = True,
+        **kwargs,
+    ):
 
         ### Basic properties required for setting up the synthesizer including
         # the dimensionality and resolution of the image representation space
         self._res = np.array([yaw_res, pitch_res], dtype=np.float32)
-        self._fov = np.array([input_yaw_fov, input_pitch_fov],
-                             dtype=np.float32)
-        self._fov_rad = self._fov * np.pi / 180.
+        self._fov = np.array([input_yaw_fov, input_pitch_fov], dtype=np.float32)
+        self._fov_rad = self._fov * np.pi / 180.0
 
         self._dims = (self._fov[:, 1] - self._fov[:, 0]) / self._res
         self._dims = np.ceil(self._dims).astype(np.int)[:, np.newaxis]
@@ -58,24 +60,24 @@ class LidarSynthesis:
         yaw_fov = input_yaw_fov if yaw_fov is None else yaw_fov
         pitch_fov = input_pitch_fov if pitch_fov is None else pitch_fov
         self._out_fov = np.array([yaw_fov, pitch_fov], dtype=np.float32)
-        self._out_fov_rad = self._out_fov * np.pi / 180.
+        self._out_fov_rad = self._out_fov * np.pi / 180.0
 
         ### Culling occluded LiDAR
         # Create a list of offset coordinates within a radius R of the origin,
         # but excluding the origin itself.
-        self.device = 'cuda:0' if torch.cuda.is_available() else 'cpu:0'
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
         cull_axis = torch.arange(-culling_r, culling_r + 1)
         offsets = torch.meshgrid(cull_axis, cull_axis)
-        offsets = torch.reshape(torch.stack(offsets, axis=-1), (-1, 2))  #(Nx2)
-        offsets = offsets[torch.any(offsets != 0, axis=1)]  #remove origin
+        offsets = torch.reshape(torch.stack(offsets, axis=-1), (-1, 2))  # (Nx2)
+        offsets = offsets[torch.any(offsets != 0, axis=1)]  # remove origin
         offsets = offsets.to(self.device)
-        self.offsets = offsets[None].type(torch.int32)  #expand_dims and cast
+        self.offsets = offsets[None].type(torch.int32)  # expand_dims and cast
 
         ### Rendering masks and neural network model for sparse -> dense
         try:  # can only work with python 3.9
             rsrc_path = pkg_resources.files(resources)
         except AttributeError:
-            with pkg_resources.path(vista, 'resources') as p:
+            with pkg_resources.path(vista, "resources") as p:
                 rsrc_path = p
         # self.avg_mask = np.load(str(rsrc_path / "Lidar/avg_mask2.npy"))
         # self.avg_mask_pt = torch.tensor(self.avg_mask).to(self.device)
@@ -87,8 +89,9 @@ class LidarSynthesis:
             logging.debug(f"Loading Lidar model from {path}")
 
             state_dict = torch.load(path, map_location=self.device)
-            self.render_model = LidarModel(layers=int(state_dict["layers"]),
-                                           filters=int(state_dict["filters"]))
+            self.render_model = LidarModel(
+                layers=int(state_dict["layers"]), filters=int(state_dict["filters"])
+            )
             self.render_model.load_state_dict(state_dict)
             self.render_model.to(self.device)
             self.render_model.eval()
@@ -98,9 +101,9 @@ class LidarSynthesis:
         trans: np.ndarray,
         rot: np.ndarray,
         pcd: np.ndarray,
-        densification = False,
+        densification=False,
     ) -> Tuple[Pointcloud, np.ndarray]:
-        """ Apply rigid transformation to a dense pointcloud and return new
+        """Apply rigid transformation to a dense pointcloud and return new
         dense representation or sparse pointcloud.
 
         Args:
@@ -120,10 +123,11 @@ class LidarSynthesis:
         pcd = pcd.transform(R, trans)
 
         # Convert from new pointcloud to dense image
-        sparse = self._pcd2sparse(pcd,
-                                  channels=(Point.DEPTH, Point.INTENSITY,
-                                            Point.MASK),
-                                  return_as_tensor=True)
+        sparse = self._pcd2sparse(
+            pcd,
+            channels=(Point.DEPTH, Point.INTENSITY, Point.MASK),
+            return_as_tensor=True,
+        )
 
         # Find occlusions and cull them from the rendering
         occlusions = self._cull_occlusions(sparse[:, :, 0])
@@ -131,42 +135,85 @@ class LidarSynthesis:
 
         if densification:
             # Filter to the new pointcloud to match the desired output lidar specs
-            new_pcd = new_pcd[(new_pcd.yaw > self._out_fov_rad[0, 0])
-                            & (new_pcd.yaw < self._out_fov_rad[0, 1])]
-            new_pcd = new_pcd[(new_pcd.pitch > self._out_fov_rad[1, 0])
-                            & (new_pcd.pitch < self._out_fov_rad[1, 1])]
+            new_pcd = new_pcd[
+                (new_pcd.yaw > self._out_fov_rad[0, 0])
+                & (new_pcd.yaw < self._out_fov_rad[0, 1])
+            ]
+            new_pcd = new_pcd[
+                (new_pcd.pitch > self._out_fov_rad[1, 0])
+                & (new_pcd.pitch < self._out_fov_rad[1, 1])
+            ]
             # pitch = torch.arcsin(new_pcd.z / new_pcd.dist)
             # new_pcd = new_pcd[pitch < (14.0 / 180 * np.pi)]
             new_pcd = new_pcd.numpy()
 
             return (new_pcd, dense)
-        
+
         else:
             fov_range = self._fov_rad[:, [1]] - self._fov_rad[:, [0]]
             step = fov_range / self._dims
-            angles = np.empty((self._dims[1, 0], self._dims[0, 0], 2),
-                        np.float32)
+            angles = np.empty((self._dims[1, 0], self._dims[0, 0], 2), np.float32)
             angles.fill(np.nan)
-            for i in range(-int(self._dims[1, 0]/2), int(self._dims[1, 0]/2)):
-                for j in range(-int(self._dims[0, 0]/2), int(self._dims[0, 0]/2)):
-                    angles[i+int(self._dims[1, 0]/2)][j+int(self._dims[0, 0]/2)][0] = step[1]*(i)
-                    angles[i+int(self._dims[1, 0]/2)][j+int(self._dims[0, 0]/2)][1] = step[0]*(j)
+            for i in range(-int(self._dims[1, 0] / 2), int(self._dims[1, 0] / 2)):
+                for j in range(-int(self._dims[0, 0] / 2), int(self._dims[0, 0] / 2)):
+                    angles[i + int(self._dims[1, 0] / 2)][
+                        j + int(self._dims[0, 0] / 2)
+                    ][0] = step[1] * (i)
+                    angles[i + int(self._dims[1, 0] / 2)][
+                        j + int(self._dims[0, 0] / 2)
+                    ][1] = step[0] * (j)
 
-            x = np.array(sparse[:,:,0].cpu().numpy()*np.cos(angles[:,:,0])*np.cos(angles[:,:,1])).reshape([self._dims[1, 0]*self._dims[0, 0], 1])
-            y = np.array(sparse[:,:,0].cpu().numpy()*np.cos(angles[:,:,0])*np.sin(angles[:,:,1])).reshape([self._dims[1, 0]*self._dims[0, 0], 1])
-            z = -np.array(sparse[:,:,0].cpu().numpy()*np.sin(angles[:,:,0])).reshape([self._dims[1, 0]*self._dims[0, 0], 1])
-            xyz = np.append(np.append(x, y, axis = 1), z, axis = 1)
+            x = np.array(
+                sparse[:, :, 0].cpu().numpy()
+                * np.cos(angles[:, :, 0])
+                * np.cos(angles[:, :, 1])
+            ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
+            y = np.array(
+                sparse[:, :, 0].cpu().numpy()
+                * np.cos(angles[:, :, 0])
+                * np.sin(angles[:, :, 1])
+            ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
+            z = np.array(
+                sparse[:, :, 0].cpu().numpy() * np.sin(angles[:, :, 0])
+            ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
+            xyz = np.append(np.append(x, y, axis=1), z, axis=1)
+            import csv
 
-            np.savetxt('./examples/vista_traces/lidar/output.csv', xyz, delimiter=',', fmt='%f')
+            with open("./examples/vista_traces/lidar/trajectory.csv", "r") as f:
+                trajectory_info = list(csv.reader(f))
+
+            [pov_X, pov_Y, pov_Z, sin_1, cos_1, sin_2, cos_2] = [
+                float(i) for i in trajectory_info[-1]
+            ]
+
+            # Rotation
+            xyz = np.dot(
+                np.array([[cos_2, 0, sin_2], [0, 1, 0], [-sin_2, 0, cos_2]]), xyz.T
+            ).T
+            # Rotation
+            xyz = np.dot(
+                np.array([[cos_1, sin_1, 0], [-sin_1, cos_1, 0], [0, 0, 1]]), xyz.T
+            ).T
+            # Traslantion
+            xyz += np.array([pov_X, pov_Y, pov_Z])
+
+            np.savetxt(
+                f"./examples/vista_traces/lidar/{len(trajectory_info)}.csv",
+                xyz,
+                delimiter=",",
+                fmt="%f",
+            )
 
             return sparse, None
 
-    def _pcd2sparse(self,
-                    pcd: Pointcloud,
-                    channels: Point = Point.DEPTH,
-                    return_as_tensor: bool = False) -> tensor_or_ndarray:
-        """ Convert from pointcloud to sparse image in polar coordinates.
-        Fill image with specified features of the data (-1 = binary). """
+    def _pcd2sparse(
+        self,
+        pcd: Pointcloud,
+        channels: Point = Point.DEPTH,
+        return_as_tensor: bool = False,
+    ) -> tensor_or_ndarray:
+        """Convert from pointcloud to sparse image in polar coordinates.
+        Fill image with specified features of the data (-1 = binary)."""
 
         if not isinstance(channels, list) and not isinstance(channels, tuple):
             channels = [channels]
@@ -182,8 +229,7 @@ class LidarSynthesis:
         inds = inds[:, order]
 
         # Creat the image and fill it
-        img = np.empty((self._dims[1, 0], self._dims[0, 0], len(channels)),
-                       np.float32)
+        img = np.empty((self._dims[1, 0], self._dims[0, 0], len(channels)), np.float32)
         img.fill(np.nan)
         img[-inds[1], inds[0], :] = values
         return torch.tensor(img).to(self.device) if return_as_tensor else img
@@ -209,8 +255,9 @@ class LidarSynthesis:
         valid = ~torch.isnan(neighbor_depth)
         scalar_zero = torch.zeros(1, 1).to(self.device)
         neighbor_depth = torch.where(valid, neighbor_depth, scalar_zero)
-        avg_depth = (torch.sum(neighbor_depth, axis=1) /
-                     torch.sum(valid.to(torch.float), axis=1))
+        avg_depth = torch.sum(neighbor_depth, axis=1) / torch.sum(
+            valid.to(torch.float), axis=1
+        )
 
         # Estimate if the location is occluded by measuring if its depth
         # greater than its surroundings (i.e. if it is behind its surroundings)
@@ -223,9 +270,9 @@ class LidarSynthesis:
         occluded_coords = coords[occluded]
         return occluded_coords
 
-    def _cull_occlusions_np(self,
-                            sparse: np.ndarray,
-                            depth_slack: float = 0.1) -> np.ndarray:
+    def _cull_occlusions_np(
+        self, sparse: np.ndarray, depth_slack: float = 0.1
+    ) -> np.ndarray:
 
         coords = np.array(np.where(sparse > 0)).T
 
@@ -250,10 +297,10 @@ class LidarSynthesis:
         # return sparse
         return occluded_coords
 
-    def _sparse2dense(self,
-                      sparse: tensor_or_ndarray,
-                      method: str = "linear") -> tensor_or_ndarray:
-        """ Convert from sparse image representation of pointcloud to dense. """
+    def _sparse2dense(
+        self, sparse: tensor_or_ndarray, method: str = "linear"
+    ) -> tensor_or_ndarray:
+        """Convert from sparse image representation of pointcloud to dense."""
 
         if method == "nn":
             sparse[torch.isnan(sparse)] = 0.0
@@ -268,8 +315,9 @@ class LidarSynthesis:
             zs = np.ma.masked_invalid(sparse)
 
             # integer arrays for indexing
-            grid_x, grid_y = np.meshgrid(np.arange(0, self._dims[0]),
-                                         np.arange(0, self._dims[1]))
+            grid_x, grid_y = np.meshgrid(
+                np.arange(0, self._dims[0]), np.arange(0, self._dims[1])
+            )
 
             # retrieve the valid, non-Nan, defined values
             valid_xs = grid_x[~zs.mask]
@@ -277,21 +325,19 @@ class LidarSynthesis:
             valid_zs = zs[~zs.mask]
 
             # generate interpolated array of values
-            dense = interpolate.griddata((valid_xs, valid_ys),
-                                         valid_zs,
-                                         tuple((grid_x, grid_y)),
-                                         method=method)
+            dense = interpolate.griddata(
+                (valid_xs, valid_ys), valid_zs, tuple((grid_x, grid_y)), method=method
+            )
             dense[np.isnan(dense)] = 0.0
         return dense
 
     def _dense2pcd(self, dense: tensor_or_ndarray):
-        """ Sample mask from network and render points from mask """
+        """Sample mask from network and render points from mask"""
         # TODO: load trained masking network and feed dense through
         # For now, simply load a mask prior from training data and sample
         mask_shape = self.avg_mask.shape
         if isinstance(dense, torch.Tensor):
-            mask = self.avg_mask_pt > torch.rand(size=mask_shape).to(
-                self.device)
+            mask = self.avg_mask_pt > torch.rand(size=mask_shape).to(self.device)
             pitch, yaw = torch.where(mask)
         else:
             mask = self.avg_mask > np.random.uniform(size=mask_shape)
@@ -315,14 +361,21 @@ class LidarSynthesis:
         self, pitch_coords: tensor_or_ndarray, yaw_coords: tensor_or_ndarray
     ) -> Tuple[tensor_or_ndarray, tensor_or_ndarray]:
 
-        yaw = yaw_coords * (self._fov_rad[0, 1] - self._fov_rad[0, 0]) / \
-              self._dims[0, 0] + self._fov_rad[0, 0]
-        pitch = pitch_coords * (self._fov_rad[1, 0] - self._fov_rad[1, 1]) / \
-              self._dims[1, 0] + self._fov_rad[1, 1]
+        yaw = (
+            yaw_coords * (self._fov_rad[0, 1] - self._fov_rad[0, 0]) / self._dims[0, 0]
+            + self._fov_rad[0, 0]
+        )
+        pitch = (
+            pitch_coords
+            * (self._fov_rad[1, 0] - self._fov_rad[1, 1])
+            / self._dims[1, 0]
+            + self._fov_rad[1, 1]
+        )
         return pitch, yaw
 
-    def _angles2rays(self, pitch: tensor_or_ndarray,
-                     yaw: tensor_or_ndarray) -> tensor_or_ndarray:
+    def _angles2rays(
+        self, pitch: tensor_or_ndarray, yaw: tensor_or_ndarray
+    ) -> tensor_or_ndarray:
 
         with_torch = isinstance(pitch, torch.Tensor)
         cos = torch.cos if with_torch else np.cos
@@ -330,15 +383,12 @@ class LidarSynthesis:
         stack = torch.stack if with_torch else np.array
 
         xyLen = cos(pitch)
-        rays = stack([ \
-            xyLen * cos(yaw),
-            xyLen * sin(yaw),
-            sin(pitch)])
+        rays = stack([xyLen * cos(yaw), xyLen * sin(yaw), sin(pitch)])
         return rays
 
     def _compute_sparse_inds(self, pcd: Pointcloud) -> np.ndarray:
-        """ Compute the indicies on the image representation which will be
-        filled for a given pointcloud """
+        """Compute the indicies on the image representation which will be
+        filled for a given pointcloud"""
 
         # project point cloud to 2D point map
         yaw = np.arctan2(pcd.y, pcd.x)

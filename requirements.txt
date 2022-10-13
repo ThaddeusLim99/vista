@@ -1,0 +1,11 @@
+opencv-python
+ffio
+shapely
+descartes
+matplotlib
+pyrender
+torch
+torchvision
+#pickle5
+h5py
+laspy
