@@ -196,6 +196,7 @@ class LidarSynthesis:
             ).T
             # Traslantion
             xyz += np.array([pov_X, pov_Y, pov_Z])
+            xyz = xyz[~np.isnan(xyz).any(axis=1)]
 
             np.savetxt(
                 f"./examples/vista_traces/lidar/{len(trajectory_info)}.csv",
