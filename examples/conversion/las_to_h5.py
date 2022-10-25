@@ -68,10 +68,12 @@ def main(args):
     )
     xyz = np.dot(np.array([[cos_2, 0, -sin_2], [0, 1, 0], [sin_2, 0, cos_2]]), xyz.T).T
 
+    print(xyz.shape)
     xyz_distance = np.sqrt(
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
     )
     xyz = xyz[xyz_distance < 245000]
+    print(xyz.shape)
 
     with open("./examples/vista_traces/lidar/trajectory.csv", "a") as f:
         f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
@@ -79,7 +81,7 @@ def main(args):
     with h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "w") as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
-        f["intensity"] = [las.intensity]
+        f["intensity"] = [las.intensity[xyz_distance < 245000]]
 
     f2 = h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "r")
     print(f2["timestamp"])
