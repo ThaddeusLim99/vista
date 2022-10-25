@@ -68,6 +68,11 @@ def main(args):
     )
     xyz = np.dot(np.array([[cos_2, 0, -sin_2], [0, 1, 0], [sin_2, 0, cos_2]]), xyz.T).T
 
+    xyz_distance = np.sqrt(
+        np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
+    )
+    xyz = xyz[xyz_distance < 245000]
+
     with open("./examples/vista_traces/lidar/trajectory.csv", "a") as f:
         f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
 
