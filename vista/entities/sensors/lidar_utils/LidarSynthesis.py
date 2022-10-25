@@ -176,7 +176,7 @@ class LidarSynthesis:
             z = np.array(
                 sparse[:, :, 0].cpu().numpy() * np.sin(angles[:, :, 0])
             ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
-            xyz = np.append(np.append(x, y, axis=1), z, axis=1)
+            xyz = np.append(np.append(x, y, axis=1), -z, axis=1)
             import csv
 
             with open("./examples/vista_traces/lidar/trajectory.csv", "r") as f:
