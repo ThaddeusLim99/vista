@@ -3,6 +3,9 @@ import argparse
 import laspy
 import numpy as np
 import zipfile
+import math
+import csv
+from statistics import mean
 
 
 def main(args):
@@ -28,14 +31,35 @@ def main(args):
         order="gps_time",
     )[0]
 
-    pov = trajectory[args.frame]
-    pov_next = trajectory[args.frame + 1]
-    pov_X = pov["X"]
-    pov_Y = pov["Y"]
-    pov_Z = pov["Z"] + 2000
-    pov_X_delta = pov_next["X"] - pov_X
-    pov_Y_delta = pov_next["Y"] - pov_Y
-    pov_Z_delta = pov_next["Z"] - pov_Z + 2000
+    try:
+        pov = trajectory[args.frame]
+    except IndexError:
+        exit(1)
+
+    last = trajectory[-1]
+    if (
+        (pov["X"] - last["X"]) ** 2
+        + (pov["Y"] - last["Y"]) ** 2
+        + (pov["Z"] - last["Z"]) ** 2
+    ) ** (1 / 2) < 300000:
+        exit(1)
+
+    pov_X_delta = []
+    pov_Y_delta = []
+    pov_Z_delta = []
+    for i in range(1, 1000, 10):
+        pov_next = trajectory[args.frame + i]
+        pov_X = pov["X"]
+        pov_Y = pov["Y"]
+        pov_Z = pov["Z"] + 2000
+        pov_X_delta.append(pov_next["X"] - pov_X)
+        pov_Y_delta.append(pov_next["Y"] - pov_Y)
+        pov_Z_delta.append(pov_next["Z"] + 2000 - pov_Z)
+
+    pov_X_delta = mean(pov_X_delta)
+    pov_Y_delta = mean(pov_Y_delta)
+    pov_Z_delta = mean(pov_Z_delta)
+
     print((pov_X_delta**2 + pov_Y_delta**2 + pov_Z_delta**2) ** 0.5)
 
     # np.savetxt(
@@ -57,7 +81,7 @@ def main(args):
     # Rotation 1
     cos_1 = pov_X_delta / ((pov_X_delta**2 + pov_Y_delta**2) ** (0.5))
     sin_1 = pov_Y_delta / ((pov_X_delta**2 + pov_Y_delta**2) ** (0.5))
-    xyz = np.dot(np.array([[cos_1, -sin_1, 0], [sin_1, cos_1, 0], [0, 0, 1]]), xyz.T).T
+    xyz = np.dot(np.array([[cos_1, sin_1, 0], [-sin_1, cos_1, 0], [0, 0, 1]]), xyz.T).T
 
     # Rotation 2
     cos_2 = ((pov_X_delta**2 + pov_Y_delta**2) ** (0.5)) / (
@@ -68,25 +92,79 @@ def main(args):
     )
     xyz = np.dot(np.array([[cos_2, 0, -sin_2], [0, 1, 0], [sin_2, 0, cos_2]]), xyz.T).T
 
-    print(xyz.shape)
     xyz_distance = np.sqrt(
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
     )
-    xyz = xyz[xyz_distance < 245000]
-    print(xyz.shape)
+    indices = np.where((xyz_distance < 245000) & (xyz[:, 0] > 0))
+    xyz = xyz[indices]
 
-    with open("./examples/vista_traces/lidar/trajectory.csv", "a") as f:
+    with open("/tmp/lidar/trajectory.csv", "a") as f:
         f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
+    with open("/tmp/lidar/trajectory.csv", "r") as f:
+        trajectory_info = list(csv.reader(f))
 
     with h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "w") as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
-        f["intensity"] = [las.intensity[xyz_distance < 245000]]
+        f["intensity"] = [las.intensity[indices]]
 
     f2 = h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "r")
     print(f2["timestamp"])
     print(f2["xyz"])
     print(f2["intensity"])
+
+    # Cartesian voxelization
+    discrete_xyz = xyz[
+        np.where(
+            (xyz[:, 0] > 45000)
+            & (xyz[:, 1] < 31000)
+            & (xyz[:, 1] > -31000)
+            & (xyz[:, 2] < 16000)
+            & (xyz[:, 2] > -16000)
+        )
+    ]
+    discrete_xyz[:, 0] /= 2
+    discrete_xyz[:, 1] /= 2
+    discrete_xyz[:, 2] /= 2
+    discrete_xyz = discrete_xyz.round(decimals=-3)
+    discrete_xyz, count = np.unique(discrete_xyz, axis=0, return_counts=True)
+    discrete_xyz = discrete_xyz[count > 1]
+    discrete_xyz[:, 0] *= 2
+    discrete_xyz[:, 1] *= 2
+    discrete_xyz[:, 2] *= 2
+    discrete_xyz = discrete_xyz[discrete_xyz[:, 0] % 20000 == 0]
+    discrete_xyz = discrete_xyz[discrete_xyz[:, 1] % 2000 == 0]
+    discrete_xyz = discrete_xyz[discrete_xyz[:, 2] % 2000 == 0]
+    discrete_xyz /= 245000
+
+    # Spherical voxelization
+    # hvd = xyz.copy()
+    # hvd[:,2] = ((xyz[:,0])**2 + (xyz[:,1])**2 + (xyz[:,2])**2)**(1/2)
+    # hvd[:,1] = np.arcsin(xyz[:,2] / hvd[:,2])
+    # hvd[:,0] = np.arcsin(xyz[:,1] / ((xyz[:,0])**2 + (xyz[:,1])**2)**(1/2))
+
+    # hvd[:,0] = (hvd[:,0]/math.pi).round(decimals=2)
+    # hvd[:,1] = (hvd[:,1]/math.pi).round(decimals=1)
+    # hvd[:,2] = (hvd[:,2]/5).round(decimals=-3)
+
+    # hvd, count = np.unique(hvd, axis=0, return_counts=True)
+    # hvd = hvd[count > 1]
+
+    # hvd[:,0] =  hvd[:,0] * math.pi
+    # hvd[:,1] =  hvd[:,1] * math.pi
+    # discrete_xyz = hvd.copy()
+    # discrete_xyz[:,0] = np.cos(hvd[:,0]) * hvd[:,2]
+    # discrete_xyz[:,1] = np.sin(hvd[:,0]) * hvd[:,2]
+    # discrete_xyz[:,2] = np.sin(hvd[:,1]) * hvd[:,2]
+
+    # discrete_xyz /= (245000/5)
+
+    np.savetxt(
+        f"./examples/vista_traces/lidar/{len(trajectory_info)}_gt.txt",
+        discrete_xyz,
+        delimiter=",",
+        fmt="%f",
+    )
 
 
 if __name__ == "__main__":
