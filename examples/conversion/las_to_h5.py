@@ -114,58 +114,15 @@ def main(args):
     print(f2["intensity"])
 
     # Cartesian voxelization
-    discrete_xyz = xyz[
-        np.where(
-            (xyz[:, 0] > 45000)
-            & (xyz[:, 1] < 31000)
-            & (xyz[:, 1] > -31000)
-            & (xyz[:, 2] < 16000)
-            & (xyz[:, 2] > -16000)
-        )
-    ]
-    discrete_xyz[:, 0] /= 2
-    discrete_xyz[:, 1] /= 2
-    discrete_xyz[:, 2] /= 2
-    discrete_xyz = discrete_xyz.round(decimals=-3)
-    discrete_xyz, count = np.unique(discrete_xyz, axis=0, return_counts=True)
-    discrete_xyz = discrete_xyz[count > 1]
-    discrete_xyz[:, 0] *= 2
-    discrete_xyz[:, 1] *= 2
-    discrete_xyz[:, 2] *= 2
-    discrete_xyz = discrete_xyz[discrete_xyz[:, 0] % 20000 == 0]
-    discrete_xyz = discrete_xyz[discrete_xyz[:, 1] % 2000 == 0]
-    discrete_xyz = discrete_xyz[discrete_xyz[:, 2] % 2000 == 0]
-    discrete_xyz /= 245000
-
-    # Spherical voxelization
-    # hvd = xyz.copy()
-    # hvd[:,2] = ((xyz[:,0])**2 + (xyz[:,1])**2 + (xyz[:,2])**2)**(1/2)
-    # hvd[:,1] = np.arcsin(xyz[:,2] / hvd[:,2])
-    # hvd[:,0] = np.arcsin(xyz[:,1] / ((xyz[:,0])**2 + (xyz[:,1])**2)**(1/2))
-
-    # hvd[:,0] = (hvd[:,0]/math.pi).round(decimals=2)
-    # hvd[:,1] = (hvd[:,1]/math.pi).round(decimals=1)
-    # hvd[:,2] = (hvd[:,2]/5).round(decimals=-3)
-
-    # hvd, count = np.unique(hvd, axis=0, return_counts=True)
-    # hvd = hvd[count > 1]
-
-    # hvd[:,0] =  hvd[:,0] * math.pi
-    # hvd[:,1] =  hvd[:,1] * math.pi
-    # discrete_xyz = hvd.copy()
-    # discrete_xyz[:,0] = np.cos(hvd[:,0]) * hvd[:,2]
-    # discrete_xyz[:,1] = np.sin(hvd[:,0]) * hvd[:,2]
-    # discrete_xyz[:,2] = np.sin(hvd[:,1]) * hvd[:,2]
-
-    # discrete_xyz /= (245000/5)
+    gt_xyz = xyz[np.where((xyz[:, 0] > 45000))]
+    gt_xyz += np.random.rand(3,2)(gt_xyz.shape[0], gt_xyz.shape[1]) * 5
 
     np.savetxt(
         f"./examples/vista_traces/lidar/{len(trajectory_info)}_gt.txt",
-        discrete_xyz,
+        gt_xyz,
         delimiter=",",
         fmt="%f",
     )
-
 
 if __name__ == "__main__":
     # Parse Arguments
