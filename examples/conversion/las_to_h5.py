@@ -114,15 +114,33 @@ def main(args):
     print(f2["intensity"])
 
     # Cartesian voxelization
-    gt_xyz = xyz[np.where((xyz[:, 0] > 45000))]
-    gt_xyz += np.random.rand(3,2)(gt_xyz.shape[0], gt_xyz.shape[1]) * 5
+    aoi = np.unique(xyz[np.where((xyz[:, 0] > 45000))].round(-3), axis=0)
+    positives = aoi[np.random.choice(aoi.shape[0], 512, replace=False)]
+    negatives = np.random.rand(10000, 3)
+    negatives[:, 0] = negatives[:, 0] * 200000 + 45000
+    negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
+    negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
+    negatives = negatives[
+        [
+            i
+            for i, v in enumerate(np.unique(negatives.round(-3), axis=0))
+            if any(np.equal(aoi, v).all(1))
+        ]
+    ]
+    positives = np.c_[positives, np.ones(positives.shape[0])]
+    negatives = np.c_[negatives, np.zeros(negatives.shape[0])]
+
+    gt_xyz = np.append(positives, negatives, axis=0)
+    gt_xyz[:, 0:3] /= 245000
+    print(f"Number of samples: {gt_xyz.shape[0]}")
 
     np.savetxt(
-        f"./examples/vista_traces/lidar/{len(trajectory_info)}_gt.txt",
+        f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_gt.txt",
         gt_xyz,
         delimiter=",",
         fmt="%f",
     )
+
 
 if __name__ == "__main__":
     # Parse Arguments

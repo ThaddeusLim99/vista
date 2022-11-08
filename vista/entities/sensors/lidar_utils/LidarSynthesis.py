@@ -123,33 +123,30 @@ class LidarSynthesis:
         pcd = pcd.transform(R, trans)
 
         # Convert from new pointcloud to dense image
-        sparse = self._pcd2sparse(
+        visible = self._pcd2sparse(
             pcd,
             channels=(Point.DEPTH, Point.INTENSITY, Point.MASK),
             return_as_tensor=True,
+            near = True,
         )
+        # occluded = self._pcd2sparse(
+        #     pcd,
+        #     channels=(Point.DEPTH, Point.INTENSITY, Point.MASK),
+        #     return_as_tensor=True,
+        #     near = False,
+        # )
+        # occluded[occluded - visible <= 0] = np.nan
+
 
         # Find occlusions and cull them from the rendering
-        occlusions = self._cull_occlusions(sparse[:, :, 0])
-        sparse[occlusions[:, 0], occlusions[:, 1]] = np.nan
+        occlusions, _ = self._cull_occlusions(visible[:, :, 0])
+        visible[occlusions[:, 0], occlusions[:, 1]] = np.nan
+        # occluded[~occlusions[:, 0], ~occlusions[:, 1]] = np.nan
 
-        if densification:
-            # Filter to the new pointcloud to match the desired output lidar specs
-            new_pcd = new_pcd[
-                (new_pcd.yaw > self._out_fov_rad[0, 0])
-                & (new_pcd.yaw < self._out_fov_rad[0, 1])
-            ]
-            new_pcd = new_pcd[
-                (new_pcd.pitch > self._out_fov_rad[1, 0])
-                & (new_pcd.pitch < self._out_fov_rad[1, 1])
-            ]
-            # pitch = torch.arcsin(new_pcd.z / new_pcd.dist)
-            # new_pcd = new_pcd[pitch < (14.0 / 180 * np.pi)]
-            new_pcd = new_pcd.numpy()
-
-            return (new_pcd, dense)
-
-        else:
+        for idx, pcd in enumerate([
+            visible, 
+            # occluded,
+        ]):
             fov_range = self._fov_rad[:, [1]] - self._fov_rad[:, [0]]
             step = fov_range / self._dims
             angles = np.empty((self._dims[1, 0], self._dims[0, 0], 2), np.float32)
@@ -164,54 +161,65 @@ class LidarSynthesis:
                     ][1] = step[0] * (j)
 
             x = np.array(
-                sparse[:, :, 0].cpu().numpy()
+                pcd[:, :, 0].cpu().numpy()
                 * np.cos(angles[:, :, 0])
                 * np.cos(angles[:, :, 1])
             ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
             y = np.array(
-                sparse[:, :, 0].cpu().numpy()
+                pcd[:, :, 0].cpu().numpy()
                 * np.cos(angles[:, :, 0])
                 * np.sin(angles[:, :, 1])
             ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
             z = np.array(
-                sparse[:, :, 0].cpu().numpy() * np.sin(angles[:, :, 0])
+                pcd[:, :, 0].cpu().numpy() * np.sin(angles[:, :, 0])
             ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
             xyz = np.append(np.append(x, y, axis=1), -z, axis=1)
+            xyz /= 245000
+
             import csv
 
-            with open("./examples/vista_traces/lidar/trajectory.csv", "r") as f:
+            with open("/tmp/lidar/trajectory.csv", "r") as f:
                 trajectory_info = list(csv.reader(f))
 
-            [pov_X, pov_Y, pov_Z, sin_1, cos_1, sin_2, cos_2] = [
-                float(i) for i in trajectory_info[-1]
-            ]
+            # [pov_X, pov_Y, pov_Z, sin_1, cos_1, sin_2, cos_2] = [
+            #     float(i) for i in trajectory_info[-1]
+            # ]
 
-            # Rotation
-            xyz = np.dot(
-                np.array([[cos_2, 0, sin_2], [0, 1, 0], [-sin_2, 0, cos_2]]), xyz.T
-            ).T
-            # Rotation
-            xyz = np.dot(
-                np.array([[cos_1, sin_1, 0], [-sin_1, cos_1, 0], [0, 0, 1]]), xyz.T
-            ).T
-            # Traslantion
-            xyz += np.array([pov_X, pov_Y, pov_Z])
+            # # Rotation
+            # xyz = np.dot(
+            #     np.array([[cos_2, 0, sin_2], [0, 1, 0], [-sin_2, 0, cos_2]]), xyz.T
+            # ).T
+            # # Rotation
+            # xyz = np.dot(
+            #     np.array([[cos_1, sin_1, 0], [-sin_1, cos_1, 0], [0, 0, 1]]), xyz.T
+            # ).T
+            # # Traslantion
+            # xyz += np.array([pov_X, pov_Y, pov_Z])
             xyz = xyz[~np.isnan(xyz).any(axis=1)]
+            
+            # Cartesian voxelization
+            discrete_xyz = xyz / 5
+            discrete_xyz = discrete_xyz.round(decimals=3)
+            discrete_xyz *= 5
+            _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
+            discrete_xyz = discrete_xyz[indices]
 
+            pcd_type = "visible" if idx == 0 else "occluded"
             np.savetxt(
-                f"./examples/vista_traces/lidar/{len(trajectory_info)}.csv",
-                xyz,
+                f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_{pcd_type}.txt",
+                discrete_xyz,
                 delimiter=",",
                 fmt="%f",
             )
 
-            return sparse, None
+        return visible, None
 
     def _pcd2sparse(
         self,
         pcd: Pointcloud,
         channels: Point = Point.DEPTH,
         return_as_tensor: bool = False,
+        near: bool = False,
     ) -> tensor_or_ndarray:
         """Convert from pointcloud to sparse image in polar coordinates.
         Fill image with specified features of the data (-1 = binary)."""
@@ -225,7 +233,10 @@ class LidarSynthesis:
         inds = self._compute_sparse_inds(pcd)
 
         # Re-order to fill points with smallest depth last
-        order = np.argsort(pcd.dist)[::-1]
+        if near:
+            order = np.argsort(pcd.dist)[::-1]
+        else:
+            order = np.argsort(pcd.dist)[::1]
         values = values[order]
         inds = inds[:, order]
 
@@ -269,7 +280,9 @@ class LidarSynthesis:
         # Return the coordinates in the depth image which are occluded and
         # should be disregarded
         occluded_coords = coords[occluded]
-        return occluded_coords
+        visible_coords = coords[~occluded]
+
+        return occluded_coords, visible_coords
 
     def _cull_occlusions_np(
         self, sparse: np.ndarray, depth_slack: float = 0.1
@@ -292,11 +305,12 @@ class LidarSynthesis:
         # point is valid if it is closer than the average depth around it
         occluded = (my_depth - depth_slack) > avg_depth
         occluded_coords = coords[occluded]
+        visible_coords = coords[~occluded]
 
         # remove (cull) all invalid points
         # sparse[occluded_coords[:, 0], occluded_coords[:, 1]] = np.nan
         # return sparse
-        return occluded_coords
+        return occluded_coords, visible_coords
 
     def _sparse2dense(
         self, sparse: tensor_or_ndarray, method: str = "linear"

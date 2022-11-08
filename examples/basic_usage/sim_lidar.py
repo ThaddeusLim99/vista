@@ -28,12 +28,12 @@ def main(args):
 
     # while not car.done:
     action = follow_human_trajectory(car)
-    car.step_dynamics(action)
-    car.step_sensors()
+    # car.step_dynamics(action)
+    # car.step_sensors()
 
-    vis_img = display.render()
-    cv2.imshow("Visualize LiDAR", vis_img[:, :, ::-1])
-    cv2.waitKey(10000)
+    # vis_img = display.render()
+    # cv2.imshow("Visualize LiDAR", vis_img[:, :, ::-1])
+    # cv2.waitKey(10000)
 
 
 def follow_human_trajectory(agent):
