@@ -148,14 +148,14 @@ class LidarSynthesis:
             # occluded,
         ]):
             fov_range = self._fov_rad[:, [1]] - self._fov_rad[:, [0]]
-            step = fov_range / self._dims
+            step = fov_range / (self._dims)
             angles = np.empty((self._dims[1, 0], self._dims[0, 0], 2), np.float32)
             angles.fill(np.nan)
             for i in range(-int(self._dims[1, 0] / 2), int(self._dims[1, 0] / 2)):
                 for j in range(-int(self._dims[0, 0] / 2), int(self._dims[0, 0] / 2)):
                     angles[i + int(self._dims[1, 0] / 2)][
                         j + int(self._dims[0, 0] / 2)
-                    ][0] = step[1] * (i)
+                    ][0] = step[1] * (i + 10)
                     angles[i + int(self._dims[1, 0] / 2)][
                         j + int(self._dims[0, 0] / 2)
                     ][1] = step[0] * (j)
@@ -201,13 +201,14 @@ class LidarSynthesis:
             discrete_xyz = xyz / 5
             discrete_xyz = discrete_xyz.round(decimals=3)
             discrete_xyz *= 5
+            np.random.shuffle(discrete_xyz)
             _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
-            discrete_xyz = discrete_xyz[indices]
+            downsampled = xyz[indices]
 
             pcd_type = "visible" if idx == 0 else "occluded"
             np.savetxt(
                 f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_{pcd_type}.txt",
-                discrete_xyz,
+                downsampled,
                 delimiter=",",
                 fmt="%f",
             )

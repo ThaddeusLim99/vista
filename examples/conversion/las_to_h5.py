@@ -114,17 +114,18 @@ def main(args):
     print(f2["intensity"])
 
     # Cartesian voxelization
-    aoi = np.unique(xyz[np.where((xyz[:, 0] > 45000))].round(-3), axis=0)
+    aoi = xyz[np.where((xyz[:, 0] > 45000))]
     positives = aoi[np.random.choice(aoi.shape[0], 512, replace=False)]
     negatives = np.random.rand(10000, 3)
     negatives[:, 0] = negatives[:, 0] * 200000 + 45000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
+    discrete_aoi = np.unique(aoi.round(-3), axis=0)
     negatives = negatives[
         [
             i
             for i, v in enumerate(np.unique(negatives.round(-3), axis=0))
-            if any(np.equal(aoi, v).all(1))
+            if any(np.equal(discrete_aoi, v).all(1))
         ]
     ]
     positives = np.c_[positives, np.ones(positives.shape[0])]
