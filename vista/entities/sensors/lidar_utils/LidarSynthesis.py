@@ -217,13 +217,13 @@ class LidarSynthesis:
                 with h5py.File("./examples/vista_traces/lidar/data.h5", "a") as f:
                     f['data'].resize((f['data'].shape[0] + 2), axis=0)
                     f['label'].resize((f['label'].shape[0] + 2), axis=0)
-                    f['source'].resize((f['source'].shape[0] + 2), axis=0)
+                    # f['source'].resize((f['source'].shape[0] + 2), axis=0)
                     f["data"][-2:] = np.array([downsampled[:,0] - float(gt_info[1]), downsampled[:,1] - float(gt_info[2]), downsampled[:,2] - float(gt_info[3])]).T
                     f["label"][-2:] = [1]
-                    f["source"][-2:] = [gt_info[0]]
+                    # f["source"][-2:] = [str(gt_info[0])]
                     f["data"][-1:] = np.array([downsampled[:,0] - float(gt_info[4]), downsampled[:,1] - float(gt_info[5]), downsampled[:,2] - float(gt_info[6])]).T
                     f["label"][-1:] = [0]
-                    f["source"][-1:] = [gt_info[0]]
+                    # f["source"][-1:] = [str(gt_info[0])]
 
             else:
                 with h5py.File("./examples/vista_traces/lidar/data.h5", "w") as f:
@@ -232,7 +232,7 @@ class LidarSynthesis:
                         np.array([downsampled[:,0] - float(gt_info[4]), downsampled[:,1] - float(gt_info[5]), downsampled[:,2] - float(gt_info[6])]).T
                     ]), compression="gzip", chunks=True, maxshape=(None, 1024, 3))
                     f.create_dataset('label', data=np.array([[1], [0]]), compression="gzip", chunks=True, maxshape=(None, 1)) 
-                    f.create_dataset('source', data=np.array([[gt_info[0]], [gt_info[0]]]), compression="gzip", chunks=True, maxshape=(None, 1)) 
+                    # f.create_dataset('source', data=np.array([[str(gt_info[0])], [str(gt_info[0])]]), compression="gzip", chunks=True, maxshape=(None, 1)) 
                     
             pcd_type = "visible" if idx == 0 else "occluded"
             np.savetxt(

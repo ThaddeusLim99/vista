@@ -111,7 +111,7 @@ def main(args):
     # Cartesian voxelization
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
     positives = aoi[np.random.choice(aoi.shape[0], 512, replace=False)]
-    negatives = np.random.rand(20000, 3)
+    negatives = np.random.rand(15000, 3)
     negatives[:, 0] = negatives[:, 0] * 200000 + 45000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
