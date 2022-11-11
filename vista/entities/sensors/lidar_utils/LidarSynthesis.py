@@ -200,15 +200,15 @@ class LidarSynthesis:
             xyz = xyz[~np.isnan(xyz).any(axis=1)]
             
             # Cartesian voxelization
-            # discrete_xyz = xyz / 5
-            # discrete_xyz = discrete_xyz.round(decimals=3)
-            # discrete_xyz *= 5
-            # np.random.shuffle(discrete_xyz)
-            # _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
-            # downsampled = xyz[indices]
+            discrete_xyz = xyz / 5
+            discrete_xyz = discrete_xyz.round(decimals=3)
+            discrete_xyz *= 5
+            np.random.shuffle(discrete_xyz)
+            _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
+            downsampled = xyz[indices]
             
             # Random Sampling
-            downsampled = xyz[np.random.choice(xyz.shape[0], 1024, replace=False)]
+            downsampled = downsampled[np.random.choice(downsampled.shape[0], 1024, replace=False)]
 
             f = open("./examples/vista_traces/lidar/log.txt", "r")
             gt_info = list(csv.reader(f))[-1]
