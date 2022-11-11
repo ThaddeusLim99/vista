@@ -133,8 +133,10 @@ def main(args):
     with open("/tmp/lidar/trajectory.csv", "r") as f:
         trajectory_info = list(csv.reader(f))
 
-    positives = np.c_[positives, np.ones(positives.shape[0])][:, 0:3] / 245000
-    negatives = np.c_[negatives, np.zeros(negatives.shape[0])][:, 0:3] / 245000
+    positives = np.c_[positives, np.ones(positives.shape[0])] / 245000
+    negatives = np.c_[negatives, np.zeros(negatives.shape[0])] / 245000
+    positives /= positives[:, 0:3] / 245000
+    negatives /= negatives[:, 0:3] / 245000
 
     np.random.shuffle(positives)
     np.random.shuffle(negatives)
