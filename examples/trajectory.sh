@@ -1,5 +1,8 @@
 #!/bin/bash
 echo "Bash version ${BASH_VERSION}..."
+rm ./examples/vista_traces/lidar/data.h5
+rm ./examples/vista_traces/lidar/log.txt
+touch ./examples/vista_traces/lidar/log.txt
 rm /tmp/lidar/trajectory.csv
 for FILE in /media/sangwon/My\ Book/Data\ Collection\ 2017/LiDAR_LAS/*.las.zip
 do

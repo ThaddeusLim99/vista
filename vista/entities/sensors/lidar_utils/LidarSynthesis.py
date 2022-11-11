@@ -1,3 +1,5 @@
+import os
+import h5py
 import imp
 import importlib.resources as pkg_resources
 import numpy as np
@@ -198,17 +200,40 @@ class LidarSynthesis:
             xyz = xyz[~np.isnan(xyz).any(axis=1)]
             
             # Cartesian voxelization
-            discrete_xyz = xyz / 5
-            discrete_xyz = discrete_xyz.round(decimals=3)
-            discrete_xyz *= 5
-            np.random.shuffle(discrete_xyz)
-            _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
-            downsampled = xyz[indices]
+            # discrete_xyz = xyz / 5
+            # discrete_xyz = discrete_xyz.round(decimals=3)
+            # discrete_xyz *= 5
+            # np.random.shuffle(discrete_xyz)
+            # _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
+            # downsampled = xyz[indices]
+            
+            # Random Sampling
+            downsampled = xyz[np.random.choice(xyz.shape[0], 1024, replace=False)]
 
+            f = open("./examples/vista_traces/lidar/log.txt", "r")
+            gt_info = list(csv.reader(f))[-1]
+
+            if os.path.isfile("./examples/vista_traces/lidar/data.h5"):
+                with h5py.File("./examples/vista_traces/lidar/data.h5", "a") as f:
+                    f['data'].resize((f['data'].shape[0] + 2), axis=0)
+                    f['label'].resize((f['label'].shape[0] + 2), axis=0)
+                    f["data"][-2:] = np.array([downsampled[:,0] - float(gt_info[1]), downsampled[:,1] - float(gt_info[2]), downsampled[:,2] - float(gt_info[3])]).T
+                    f["label"][-2:] = [1]
+                    f["data"][-1:] = np.array([downsampled[:,0] - float(gt_info[4]), downsampled[:,1] - float(gt_info[5]), downsampled[:,2] - float(gt_info[6])]).T
+                    f["label"][-1:] = [0]
+
+            else:
+                with h5py.File("./examples/vista_traces/lidar/data.h5", "w") as f:
+                    f.create_dataset('data', data= np.array([
+                        np.array([downsampled[:,0] - float(gt_info[1]), downsampled[:,1] - float(gt_info[2]), downsampled[:,2] - float(gt_info[3])]).T,
+                        np.array([downsampled[:,0] - float(gt_info[4]), downsampled[:,1] - float(gt_info[5]), downsampled[:,2] - float(gt_info[6])]).T
+                    ]), compression="gzip", chunks=True, maxshape=(None, 1024, 3))
+                    f.create_dataset('label', data=np.array([[1], [0]]), compression="gzip", chunks=True, maxshape=(None, 1)) 
+                    
             pcd_type = "visible" if idx == 0 else "occluded"
             np.savetxt(
                 f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_{pcd_type}.txt",
-                downsampled,
+                xyz,
                 delimiter=",",
                 fmt="%f",
             )

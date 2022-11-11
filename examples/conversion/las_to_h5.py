@@ -95,13 +95,8 @@ def main(args):
     xyz_distance = np.sqrt(
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
     )
-    indices = np.where((xyz_distance < 245000) & (xyz[:, 0] > 0))
+    indices = np.where((xyz_distance < 245000))
     xyz = xyz[indices]
-
-    with open("/tmp/lidar/trajectory.csv", "a") as f:
-        f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
-    with open("/tmp/lidar/trajectory.csv", "r") as f:
-        trajectory_info = list(csv.reader(f))
 
     with h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "w") as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
@@ -114,9 +109,9 @@ def main(args):
     print(f2["intensity"])
 
     # Cartesian voxelization
-    aoi = xyz[np.where((xyz[:, 0] > 45000))]
+    aoi = xyz[np.where((xyz[:, 0] > 95000))]
     positives = aoi[np.random.choice(aoi.shape[0], 512, replace=False)]
-    negatives = np.random.rand(10000, 3)
+    negatives = np.random.rand(20000, 3)
     negatives[:, 0] = negatives[:, 0] * 200000 + 45000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
@@ -128,11 +123,23 @@ def main(args):
             if any(np.equal(discrete_aoi, v).all(1))
         ]
     ]
-    positives = np.c_[positives, np.ones(positives.shape[0])]
-    negatives = np.c_[negatives, np.zeros(negatives.shape[0])]
+
+    if len(positives) < 512 or len(negatives) < 256:
+        print("Too little amount of samples")
+        exit(1)
+
+    with open("/tmp/lidar/trajectory.csv", "a") as f:
+        f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
+    with open("/tmp/lidar/trajectory.csv", "r") as f:
+        trajectory_info = list(csv.reader(f))
+
+    positives = np.c_[positives, np.ones(positives.shape[0])][:, 0:3] / 245000
+    negatives = np.c_[negatives, np.zeros(negatives.shape[0])][:, 0:3] / 245000
+
+    np.random.shuffle(positives)
+    np.random.shuffle(negatives)
 
     gt_xyz = np.append(positives, negatives, axis=0)
-    gt_xyz[:, 0:3] /= 245000
     print(f"Number of samples: {gt_xyz.shape[0]}")
 
     np.savetxt(
@@ -141,6 +148,11 @@ def main(args):
         delimiter=",",
         fmt="%f",
     )
+
+    with open("./examples/vista_traces/lidar/log.txt", "a") as f:
+        f.write(
+            f"{args.input.split('/')[-1].split('.zip')[0]}, {positives[0][0]}, {positives[0][1]}, {positives[0][2]}, {negatives[0][0]}, {negatives[0][1]}, {negatives[0][2]}\n"
+        )
 
 
 if __name__ == "__main__":
