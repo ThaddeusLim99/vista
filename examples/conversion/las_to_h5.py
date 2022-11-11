@@ -135,8 +135,8 @@ def main(args):
 
     positives = np.c_[positives, np.ones(positives.shape[0])] / 245000
     negatives = np.c_[negatives, np.zeros(negatives.shape[0])] / 245000
-    positives /= positives[:, 0:3] / 245000
-    negatives /= negatives[:, 0:3] / 245000
+    positives[:, 0:3] /= 245000
+    negatives[:, 0:3] /= 245000
 
     np.random.shuffle(positives)
     np.random.shuffle(negatives)
