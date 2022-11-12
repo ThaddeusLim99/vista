@@ -235,10 +235,16 @@ class LidarSynthesis:
                     f.create_dataset('label', data=np.array([[1], [0]]), compression="gzip", chunks=True, maxshape=(None, 1)) 
                     # f.create_dataset('source', data=np.array([[str(gt_info[0])], [str(gt_info[0])]]), compression="gzip", chunks=True, maxshape=(None, 1)) 
                     
-            pcd_type = "visible" if idx == 0 else "occluded"
+            # pcd_type = "visible" if idx == 0 else "occluded"
             np.savetxt(
-                f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_{pcd_type}.txt",
+                f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_visible.txt",
                 xyz,
+                delimiter=",",
+                fmt="%f",
+            )
+            np.savetxt(
+                f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_downsapled.txt",
+                downsampled,
                 delimiter=",",
                 fmt="%f",
             )
