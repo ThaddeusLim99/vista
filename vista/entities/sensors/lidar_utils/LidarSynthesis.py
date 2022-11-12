@@ -200,12 +200,13 @@ class LidarSynthesis:
             xyz = xyz[~np.isnan(xyz).any(axis=1)]
             
             # Cartesian voxelization
-            discrete_xyz = xyz / 10
+            half = xyz[np.where((xyz[:, 0] > 0.01))]
+            discrete_xyz = half / 10
             discrete_xyz = discrete_xyz.round(decimals=3)
             discrete_xyz *= 10
             np.random.shuffle(discrete_xyz)
             _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
-            downsampled = xyz[indices]
+            downsampled = half[indices]
             print(downsampled.shape)
             
             # Random Sampling
