@@ -112,7 +112,7 @@ def main(args):
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
     positives = aoi[np.random.choice(aoi.shape[0], 512, replace=False)]
     negatives = np.random.rand(15000, 3)
-    negatives[:, 0] = negatives[:, 0] * 200000 + 45000
+    negatives[:, 0] = negatives[:, 0] * 150000 + 95000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
     discrete_aoi = np.unique(aoi.round(-3), axis=0)
@@ -133,8 +133,8 @@ def main(args):
     with open("/tmp/lidar/trajectory.csv", "r") as f:
         trajectory_info = list(csv.reader(f))
 
-    positives = np.c_[positives, np.ones(positives.shape[0])] / 245000
-    negatives = np.c_[negatives, np.zeros(negatives.shape[0])] / 245000
+    positives = np.c_[positives, np.ones(positives.shape[0])]
+    negatives = np.c_[negatives, np.zeros(negatives.shape[0])]
     positives[:, 0:3] /= 245000
     negatives[:, 0:3] /= 245000
 
