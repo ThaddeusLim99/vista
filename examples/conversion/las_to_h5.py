@@ -100,7 +100,7 @@ def main(args):
     ]
     tan_li = []
     for _ in range(100):
-        random_idx = random.randint(0, cross_section.shape[0])
+        random_idx = random.randint(0, cross_section.shape[0]-1)
         tan_li.append(cross_section[random_idx][2] / cross_section[random_idx][1])
 
     tangent = mean(tan_li)
