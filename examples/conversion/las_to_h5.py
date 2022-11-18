@@ -5,6 +5,7 @@ import numpy as np
 import zipfile
 import math
 import csv
+import random
 from statistics import mean
 
 
@@ -31,8 +32,9 @@ def main(args):
         order="gps_time",
     )[0]
 
+    frame = random.randint(10000, len(trajectory) - 10000)
     try:
-        pov = trajectory[args.frame]
+        pov = trajectory[frame]
     except IndexError:
         exit(1)
 
@@ -44,30 +46,23 @@ def main(args):
     ) ** (1 / 2) < 300000:
         exit(1)
 
+    pov_X = pov["X"]
+    pov_Y = pov["Y"]
+    pov_Z = pov["Z"]
     pov_X_delta = []
     pov_Y_delta = []
     pov_Z_delta = []
     for i in range(1, 1000, 10):
-        pov_next = trajectory[args.frame + i]
-        pov_X = pov["X"]
-        pov_Y = pov["Y"]
-        pov_Z = pov["Z"] + 2000
+        pov_next = trajectory[frame + i]
         pov_X_delta.append(pov_next["X"] - pov_X)
         pov_Y_delta.append(pov_next["Y"] - pov_Y)
-        pov_Z_delta.append(pov_next["Z"] + 2000 - pov_Z)
+        pov_Z_delta.append(pov_next["Z"] - pov_Z)
 
     pov_X_delta = mean(pov_X_delta)
     pov_Y_delta = mean(pov_Y_delta)
     pov_Z_delta = mean(pov_Z_delta)
 
     print((pov_X_delta**2 + pov_Y_delta**2 + pov_Z_delta**2) ** 0.5)
-
-    # np.savetxt(
-    #     "./examples/vista_traces/lidar/input.csv",
-    #     np.array([las.X, las.Y, las.Z]).T,
-    #     delimiter=",",
-    #     fmt="%f",
-    # )
 
     x = np.array(las.X)
     y = np.array(las.Y)
@@ -95,6 +90,29 @@ def main(args):
     xyz_distance = np.sqrt(
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
     )
+
+    # Cross section angle
+    cross_section = xyz[
+        (xyz[:, 0] < 100)
+        & (xyz[:, 0] > -100)
+        & (xyz[:, 1] < 3000)
+        & (xyz[:, 0] > -3000)
+    ]
+    tan_li = []
+    for _ in range(100):
+        random_idx = random.randint(0, cross_section.shape[0])
+        tan_li.append(cross_section[random_idx][2] / cross_section[random_idx][1])
+
+    tangent = mean(tan_li)
+    cross_angle = math.atan(tangent)
+    cos_3 = math.cos(cross_angle)
+    sin_3 = math.sin(cross_angle)
+
+    xyz = np.dot(np.array([[1, 0, 0], [0, cos_3, -sin_3], [0, sin_3, cos_3]]), xyz.T).T
+
+    # Sensor at 2 meter above
+    xyz[:, 2] -= 2000
+
     indices = np.where((xyz_distance < 245000))
     xyz = xyz[indices]
 
@@ -111,7 +129,11 @@ def main(args):
     # Cartesian voxelization
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
     positives = aoi[np.random.choice(aoi.shape[0], 512, replace=False)]
-    negatives = np.random.rand(15000, 3)
+    if len(positives) < 512:
+        print("Too little amount of samples")
+        exit(1)
+
+    negatives = np.random.rand(10000, 3)
     negatives[:, 0] = negatives[:, 0] * 150000 + 95000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
@@ -123,8 +145,10 @@ def main(args):
             if any(np.equal(discrete_aoi, v).all(1))
         ]
     ]
-
-    if len(positives) < 512 or len(negatives) < 256:
+    print(negatives.shape)
+    try:
+        negatives = negatives[np.random.choice(negatives.shape[0], 512, replace=False)]
+    except ValueError:
         print("Too little amount of samples")
         exit(1)
 
@@ -161,7 +185,7 @@ if __name__ == "__main__":
     # Parse Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str, help="Path to .las file to convert to .h5")
-    parser.add_argument("--frame", type=int, help="Frame number")
+    # parser.add_argument("--frame", type=int, help="Frame number")
     args = parser.parse_args()
 
     main(args)
