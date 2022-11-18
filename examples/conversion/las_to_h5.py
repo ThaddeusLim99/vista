@@ -95,13 +95,14 @@ def main(args):
     cross_section = xyz[
         (xyz[:, 0] < 100)
         & (xyz[:, 0] > -100)
-        & (xyz[:, 1] < 3000)
-        & (xyz[:, 0] > -3000)
+        & (xyz[:, 1] < 1000)
+        & (xyz[:, 1] > -1000)
     ]
     tan_li = []
     for _ in range(100):
         random_idx = random.randint(0, cross_section.shape[0]-1)
-        tan_li.append(cross_section[random_idx][2] / cross_section[random_idx][1])
+        if cross_section[random_idx][1] != 0:
+            tan_li.append(cross_section[random_idx][2] / cross_section[random_idx][1])
 
     tangent = mean(tan_li)
     cross_angle = math.atan(tangent)
@@ -133,7 +134,7 @@ def main(args):
         print("Too little amount of samples")
         exit(1)
 
-    negatives = np.random.rand(10000, 3)
+    negatives = np.random.rand(15000, 3)
     negatives[:, 0] = negatives[:, 0] * 150000 + 95000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
