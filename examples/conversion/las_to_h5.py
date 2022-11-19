@@ -52,7 +52,7 @@ def main(args):
     pov_X_delta = []
     pov_Y_delta = []
     pov_Z_delta = []
-    for i in range(1, 1000, 10):
+    for i in range(1, 100, 10):
         pov_next = trajectory[frame + i]
         pov_X_delta.append(pov_next["X"] - pov_X)
         pov_Y_delta.append(pov_next["Y"] - pov_Y)
