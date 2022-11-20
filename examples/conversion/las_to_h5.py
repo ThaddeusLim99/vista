@@ -100,7 +100,7 @@ def main(args):
     ]
     tan_li = []
     for _ in range(100):
-        random_idx = random.randint(0, cross_section.shape[0]-1)
+        random_idx = random.randint(0, cross_section.shape[0] - 1)
         if cross_section[random_idx][1] != 0:
             tan_li.append(cross_section[random_idx][2] / cross_section[random_idx][1])
 
@@ -134,7 +134,12 @@ def main(args):
         print("Too little amount of samples")
         exit(1)
 
-    negatives = np.random.rand(15000, 3)
+    np.random.shuffle(positives)
+    _, positive_indices = np.unique(positives.round(-4), axis=0, return_index=True)
+    positives = positives[positive_indices]
+    print(positives.shape)
+
+    negatives = np.random.rand(7500, 3)
     negatives[:, 0] = negatives[:, 0] * 150000 + 95000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
@@ -148,7 +153,11 @@ def main(args):
     ]
     print(negatives.shape)
     try:
-        negatives = negatives[np.random.choice(negatives.shape[0], 512, replace=False)]
+        negatives = negatives[
+            np.random.choice(
+                negatives.shape[0], 512 - positives.shape[0], replace=False
+            )
+        ]
     except ValueError:
         print("Too little amount of samples")
         exit(1)
@@ -163,7 +172,6 @@ def main(args):
     positives[:, 0:3] /= 245000
     negatives[:, 0:3] /= 245000
 
-    np.random.shuffle(positives)
     np.random.shuffle(negatives)
 
     gt_xyz = np.append(positives, negatives, axis=0)
