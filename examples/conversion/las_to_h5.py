@@ -129,17 +129,20 @@ def main(args):
 
     # Cartesian voxelization
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
-    positives = aoi[np.random.choice(aoi.shape[0], 512, replace=False)]
-    if len(positives) < 512:
+    positives = aoi[np.random.choice(aoi.shape[0], 2048, replace=False)]
+    np.random.shuffle(positives)
+    _, positive_indices = np.unique(
+        (np.c_[positives[:, 1], positives[:, 2]] * 5).round(-4),
+        axis=0,
+        return_index=True,
+    )
+    positives = positives[positive_indices]
+    print(positives.shape)
+    if len(positives) < 128 or len(positives) > 256:
         print("Too little amount of samples")
         exit(1)
 
-    np.random.shuffle(positives)
-    _, positive_indices = np.unique(positives.round(-4), axis=0, return_index=True)
-    positives = positives[positive_indices]
-    print(positives.shape)
-
-    negatives = np.random.rand(7500, 3)
+    negatives = np.random.rand(15000, 3)
     negatives[:, 0] = negatives[:, 0] * 150000 + 95000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
