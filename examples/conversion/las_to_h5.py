@@ -62,8 +62,6 @@ def main(args):
     pov_Y_delta = mean(pov_Y_delta)
     pov_Z_delta = mean(pov_Z_delta)
 
-    print((pov_X_delta**2 + pov_Y_delta**2 + pov_Z_delta**2) ** 0.5)
-
     x = np.array(las.X)
     y = np.array(las.Y)
     z = np.array(las.Z)
@@ -127,58 +125,30 @@ def main(args):
     print(f2["xyz"])
     print(f2["intensity"])
 
-    # Cartesian voxelization
+    samples = np.random.rand(1024, 3)
+    samples[:, 0] = samples[:, 0] * 150000 + 95000
+    samples[:, 1] = (samples[:, 1] - 0.5) * 100000
+    samples[:, 2] = (samples[:, 2] - 0.5) * 30000
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
-    positives = aoi[np.random.choice(aoi.shape[0], 2048, replace=False)]
-    np.random.shuffle(positives)
-    _, positive_indices = np.unique(
-        (np.c_[positives[:, 1], positives[:, 2]] * 5).round(-4),
-        axis=0,
-        return_index=True,
-    )
-    positives = positives[positive_indices]
-    print(positives.shape)
-    if len(positives) < 128 or len(positives) > 384:
-        print("Too little amount of samples")
+    discrete_aoi = np.unique((aoi).round(-2), axis=0)
+    distances = np.array(
+        [
+            np.sort(np.linalg.norm((sample - discrete_aoi), axis=1))[0]
+            for sample in samples
+        ]
+    ) / ((150000**2 + 100000**2 + 30000**2) ** (1 / 2))
+    num_positives = distances[np.where((distances < 1000))].shape[0]
+    print(f"Number of samples within 1m: {num_positives}")
+    if num_positives < 128:
+        print("Too few positive samples")
         exit(1)
 
-    negatives = np.random.rand(10000, 3)
-    negatives[:, 0] = negatives[:, 0] * 150000 + 95000
-    negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
-    negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
-    discrete_aoi = np.unique(aoi.round(-3), axis=0)
-    negatives = negatives[
-        [
-            i
-            for i, v in enumerate(np.unique(negatives.round(-3), axis=0))
-            if any(np.equal(discrete_aoi, v).all(1))
-        ]
-    ]
-    print(negatives.shape)
-    try:
-        negatives = negatives[
-            np.random.choice(
-                negatives.shape[0], 512 - positives.shape[0], replace=False
-            )
-        ]
-    except ValueError:
-        print("Too little amount of samples")
-        exit(1)
+    gt_xyz = np.c_[samples / 245000, distances]
 
     with open("/tmp/lidar/trajectory.csv", "a") as f:
         f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
     with open("/tmp/lidar/trajectory.csv", "r") as f:
         trajectory_info = list(csv.reader(f))
-
-    positives = np.c_[positives, np.ones(positives.shape[0])]
-    negatives = np.c_[negatives, np.zeros(negatives.shape[0])]
-    positives[:, 0:3] /= 245000
-    negatives[:, 0:3] /= 245000
-
-    np.random.shuffle(negatives)
-
-    gt_xyz = np.append(positives, negatives, axis=0)
-    print(f"Number of samples: {gt_xyz.shape[0]}")
 
     np.savetxt(
         f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_gt.txt",
@@ -186,11 +156,6 @@ def main(args):
         delimiter=",",
         fmt="%f",
     )
-
-    with open("./examples/vista_traces/lidar/log.txt", "a") as f:
-        f.write(
-            f"{args.input.split('/')[-1].split('.zip')[0]}, {positives[0][0]}, {positives[0][1]}, {positives[0][2]}, {negatives[0][0]}, {negatives[0][1]}, {negatives[0][2]}\n"
-        )
 
 
 if __name__ == "__main__":

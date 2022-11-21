@@ -211,9 +211,9 @@ class LidarSynthesis:
 
             gt_info = np.genfromtxt(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_gt.txt", delimiter=',')
             np.random.shuffle(gt_info)
-            KNN_data = np.zeros((512, 128*4))
+            KNN_data = np.zeros((1024, 128*4))
 
-            for i in range(512):
+            for i in range(1024):
                 # KNN
                 distances = np.linalg.norm((xyz - gt_info[i][0:3]), axis=1)
                 KNN_indices = np.argsort(distances)[:128]
@@ -223,9 +223,9 @@ class LidarSynthesis:
             tr_te_split = random.choices(["tr", "te"], weights=(80, 20), k=1)[0]
 
             with h5py.File(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_data_{tr_te_split}.h5", "w") as f:
-                f.create_dataset('point', data=np.array([gt_info[:,0:3]]), compression="gzip", chunks=True, maxshape=(1, 512, 3))
-                f.create_dataset('data', data=np.array([KNN_data]), compression="gzip", chunks=True, maxshape=(1, 512, 128*4))
-                f.create_dataset('label', data=np.array([np.array([gt_info[:,-1].T, -(gt_info[:,-1].T - 1)+0]).T]), compression="gzip", chunks=True, maxshape=(1, 1024, 2)) 
+                f.create_dataset('point', data=np.array([gt_info[:,0:3]]), compression="gzip", chunks=True, maxshape=(1, 1024, 3))
+                f.create_dataset('data', data=np.array([KNN_data]), compression="gzip", chunks=True, maxshape=(1, 1024, 128*4))
+                f.create_dataset('label', data=np.array([np.array([gt_info[:,-1].T, -(gt_info[:,-1].T - 1)+0]).T]), compression="gzip", chunks=True, maxshape=(1, 1024, 1)) 
 
             f2 = h5py.File(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_data_{tr_te_split}.h5", "r")
             print(f2["point"])
