@@ -115,6 +115,13 @@ def main(args):
     indices = np.where((xyz_distance < 245000))
     xyz = xyz[indices]
 
+    aoi = xyz[np.where((xyz[:, 0] > 95000))]
+    aoi_avg = np.average(aoi, axis=0)
+    print(aoi_avg)
+    if aoi_avg[1] < 15000 and aoi_avg[1] > -15000 and aoi_avg[2] > -4000:
+        print("Visibility OK")
+        exit(1)
+
     with h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "w") as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
@@ -124,13 +131,6 @@ def main(args):
     print(f2["timestamp"])
     print(f2["xyz"])
     print(f2["intensity"])
-
-    aoi = xyz[np.where((xyz[:, 0] > 95000))]
-    aoi_avg = np.average(aoi, axis=0)
-    print(aoi_avg)
-    if aoi_avg[1] < 15000 and aoi_avg[1] > -15000 and aoi_avg[2] > -4000:
-        print("Visibility OK")
-        exit(1)
 
     samples = np.random.rand(1024, 3)
     samples[:, 0] = samples[:, 0] * 150000 + 95000
