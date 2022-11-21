@@ -225,7 +225,7 @@ class LidarSynthesis:
             with h5py.File(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_data_{tr_te_split}.h5", "w") as f:
                 f.create_dataset('point', data=np.array([gt_info[:,0:3]]), compression="gzip", chunks=True, maxshape=(1, 1024, 3))
                 f.create_dataset('data', data=np.array([KNN_data]), compression="gzip", chunks=True, maxshape=(1, 1024, 128*4))
-                f.create_dataset('label', data=np.array([np.array([gt_info[:,-1].T, -(gt_info[:,-1].T - 1)+0]).T]), compression="gzip", chunks=True, maxshape=(1, 1024, 1)) 
+                f.create_dataset('label', data=np.array([gt_info[:,-1].reshape(1024, 1)]), compression="gzip", chunks=True, maxshape=(1, 1024, 1)) 
 
             f2 = h5py.File(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_data_{tr_te_split}.h5", "r")
             print(f2["point"])

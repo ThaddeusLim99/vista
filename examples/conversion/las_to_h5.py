@@ -130,7 +130,8 @@ def main(args):
     samples[:, 1] = (samples[:, 1] - 0.5) * 100000
     samples[:, 2] = (samples[:, 2] - 0.5) * 30000
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
-    discrete_aoi = np.unique((aoi).round(-2), axis=0)
+    _, indices = np.unique((aoi).round(-3), axis=0, return_index=True)
+    discrete_aoi = aoi[indices]
     distances = np.array(
         [
             np.sort(np.linalg.norm((sample - discrete_aoi), axis=1))[0]
@@ -138,7 +139,7 @@ def main(args):
         ]
     ) / ((150000**2 + 100000**2 + 30000**2) ** (1 / 2))
     num_positives = distances[np.where((distances < 1000))].shape[0]
-    print(f"Number of samples within 1m: {num_positives}")
+
     if num_positives < 128:
         print("Too few positive samples")
         exit(1)
