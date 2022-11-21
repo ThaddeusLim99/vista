@@ -137,7 +137,7 @@ def main(args):
     samples[:, 1] = (samples[:, 1] - 0.5) * 100000
     samples[:, 2] = (samples[:, 2] - 0.5) * 30000
     np.random.shuffle(aoi)
-    _, indices = np.unique((aoi).round(-3), axis=0, return_index=True)
+    _, indices = np.unique((aoi).round(-2), axis=0, return_index=True)
     downsampled = aoi[indices]
     distances = np.array(
         [
@@ -147,7 +147,7 @@ def main(args):
     )
     num_positives = distances[np.where((distances < 1500))].shape[0]
 
-    print(f"Number of samples within 1m: {num_positives}")
+    print(f"Number of samples within 1.5m: {num_positives}")
 
     gt_xyz = np.c_[samples / 245000, distances]
 
