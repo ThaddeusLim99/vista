@@ -131,19 +131,19 @@ def main(args):
     samples[:, 2] = (samples[:, 2] - 0.5) * 30000
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
     _, indices = np.unique((aoi).round(-3), axis=0, return_index=True)
-    discrete_aoi = aoi[indices]
+    downsampled = aoi[indices]
     distances = np.array(
         [
-            np.sort(np.linalg.norm((sample - discrete_aoi), axis=1))[0]
+            np.sort(np.linalg.norm((sample - downsampled), axis=1))[0]
             for sample in samples
         ]
     )
-    num_positives = distances[np.where((distances < 1000))].shape[0]
+    num_positives = distances[np.where((distances < 1500))].shape[0]
 
     print(f"Number of samples within 1m: {num_positives}")
-    # if num_positives < 128:
-    #     print("Too few positive samples")
-    #     exit(1)
+    if num_positives < 128:
+        print("Too few positive samples")
+        exit(1)
 
     gt_xyz = np.c_[samples / 245000, distances/((150000**2 + 100000**2 + 30000**2) ** (1 / 2)) ]
 
