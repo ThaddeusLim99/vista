@@ -125,11 +125,18 @@ def main(args):
     print(f2["xyz"])
     print(f2["intensity"])
 
+    aoi = xyz[np.where((xyz[:, 0] > 95000))]
+    aoi_avg = np.average(aoi, axis=0)
+    print(aoi_avg)
+    if aoi_avg[1] < 30000 and aoi_avg[1] > -30000 and aoi_avg[2] > -5000:
+        print("Visibility OK")
+        exit(1)
+
     samples = np.random.rand(1024, 3)
     samples[:, 0] = samples[:, 0] * 150000 + 95000
     samples[:, 1] = (samples[:, 1] - 0.5) * 100000
     samples[:, 2] = (samples[:, 2] - 0.5) * 30000
-    aoi = xyz[np.where((xyz[:, 0] > 95000))]
+    np.random.shuffle(aoi)
     _, indices = np.unique((aoi).round(-3), axis=0, return_index=True)
     downsampled = aoi[indices]
     distances = np.array(
@@ -141,11 +148,8 @@ def main(args):
     num_positives = distances[np.where((distances < 1500))].shape[0]
 
     print(f"Number of samples within 1m: {num_positives}")
-    if num_positives < 128:
-        print("Too few positive samples")
-        exit(1)
 
-    gt_xyz = np.c_[samples / 245000, distances/((150000**2 + 100000**2 + 30000**2) ** (1 / 2)) ]
+    gt_xyz = np.c_[samples / 245000, distances]
 
     with open("/tmp/lidar/trajectory.csv", "a") as f:
         f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")

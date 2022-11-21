@@ -183,32 +183,8 @@ class LidarSynthesis:
             with open("/tmp/lidar/trajectory.csv", "r") as f:
                 trajectory_info = list(csv.reader(f))
 
-            # [pov_X, pov_Y, pov_Z, sin_1, cos_1, sin_2, cos_2] = [
-            #     float(i) for i in trajectory_info[-1]
-            # ]
-
-            # # Rotation
-            # xyz = np.dot(
-            #     np.array([[cos_2, 0, sin_2], [0, 1, 0], [-sin_2, 0, cos_2]]), xyz.T
-            # ).T
-            # # Rotation
-            # xyz = np.dot(
-            #     np.array([[cos_1, sin_1, 0], [-sin_1, cos_1, 0], [0, 0, 1]]), xyz.T
-            # ).T
-            # # Traslantion
-            # xyz += np.array([pov_X, pov_Y, pov_Z])
             xyz = xyz[~np.isnan(xyz).any(axis=1)]
             
-            # Cartesian voxelization
-            # discrete_xyz = xyz.round(decimals=2)
-            # np.random.shuffle(discrete_xyz)
-            # _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
-            # downsampled = xyz[indices]
-            # print(downsampled.shape)
-            
-            # Random Sampling
-            # downsampled = downsampled[np.random.choice(downsampled.shape[0], 1024, replace=False)]
-
             gt_info = np.genfromtxt(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_gt.txt", delimiter=',')
             np.random.shuffle(gt_info)
             KNN_data = np.zeros((1024, 128*4))
