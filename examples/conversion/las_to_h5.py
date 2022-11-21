@@ -137,14 +137,15 @@ def main(args):
             np.sort(np.linalg.norm((sample - discrete_aoi), axis=1))[0]
             for sample in samples
         ]
-    ) / ((150000**2 + 100000**2 + 30000**2) ** (1 / 2))
+    )
     num_positives = distances[np.where((distances < 1000))].shape[0]
 
-    if num_positives < 128:
-        print("Too few positive samples")
-        exit(1)
+    print(f"Number of samples within 1m: {num_positives}")
+    # if num_positives < 128:
+    #     print("Too few positive samples")
+    #     exit(1)
 
-    gt_xyz = np.c_[samples / 245000, distances]
+    gt_xyz = np.c_[samples / 245000, distances/((150000**2 + 100000**2 + 30000**2) ** (1 / 2)) ]
 
     with open("/tmp/lidar/trajectory.csv", "a") as f:
         f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
