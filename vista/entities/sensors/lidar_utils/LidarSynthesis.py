@@ -200,11 +200,11 @@ class LidarSynthesis:
             xyz = xyz[~np.isnan(xyz).any(axis=1)]
             
             # Cartesian voxelization
-            discrete_xyz = xyz.round(decimals=2)
-            np.random.shuffle(discrete_xyz)
-            _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
-            downsampled = xyz[indices]
-            print(downsampled.shape)
+            # discrete_xyz = xyz.round(decimals=2)
+            # np.random.shuffle(discrete_xyz)
+            # _, indices = np.unique(discrete_xyz, axis=0, return_index=True)
+            # downsampled = xyz[indices]
+            # print(downsampled.shape)
             
             # Random Sampling
             # downsampled = downsampled[np.random.choice(downsampled.shape[0], 1024, replace=False)]
@@ -215,9 +215,9 @@ class LidarSynthesis:
 
             for i in range(512):
                 # KNN
-                distances = np.linalg.norm((downsampled - gt_info[i][0:3]), axis=1)
+                distances = np.linalg.norm((xyz - gt_info[i][0:3]), axis=1)
                 KNN_indices = np.argsort(distances)[:128]
-                KNN_data[i] =  np.c_[(downsampled)[KNN_indices], distances[KNN_indices]].flatten(order='C')
+                KNN_data[i] =  np.c_[xyz[KNN_indices], distances[KNN_indices]].flatten(order='C')
 
             import random
             tr_te_split = random.choices(["tr", "te"], weights=(80, 20), k=1)[0]

@@ -138,11 +138,11 @@ def main(args):
     )
     positives = positives[positive_indices]
     print(positives.shape)
-    if len(positives) < 128 or len(positives) > 256:
+    if len(positives) < 128 or len(positives) > 384:
         print("Too little amount of samples")
         exit(1)
 
-    negatives = np.random.rand(15000, 3)
+    negatives = np.random.rand(10000, 3)
     negatives[:, 0] = negatives[:, 0] * 150000 + 95000
     negatives[:, 1] = (negatives[:, 1] - 0.5) * 150000
     negatives[:, 2] = (negatives[:, 2] - 0.5) * 30000
