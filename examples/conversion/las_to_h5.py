@@ -118,7 +118,7 @@ def main(args):
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
     aoi_avg = np.average(aoi, axis=0)
     print(aoi_avg)
-    if aoi_avg[1] < 15000 and aoi_avg[1] > -15000 and aoi_avg[2] > -4000:
+    if aoi_avg[1] < 6000 and aoi_avg[1] > -6000 and aoi_avg[2] > -6000:
         print("Visibility OK")
         exit(1)
 
