@@ -141,7 +141,7 @@ def main(args):
     downsampled = aoi[indices]
     distances = np.array(
         [
-            np.sort(np.linalg.norm((sample - downsampled), axis=1))[0]
+            np.min(np.linalg.norm((sample - downsampled), axis=1))
             for sample in samples
         ]
     )
