@@ -118,7 +118,12 @@ def main(args):
     aoi = xyz[np.where((xyz[:, 0] > 95000))]
     aoi_avg = np.average(aoi, axis=0)
     print(aoi_avg)
-    if aoi_avg[1] < 6000 and aoi_avg[1] > -6000 and aoi_avg[2] > -6000:
+    if (
+        aoi_avg[1] < 6000
+        and aoi_avg[1] > -6000
+        and aoi_avg[2] > -6000
+        and aoi_avg[2] < 6000
+    ):
         print("Visibility OK")
         exit(1)
 
@@ -140,10 +145,7 @@ def main(args):
     _, indices = np.unique((aoi).round(-2), axis=0, return_index=True)
     downsampled = aoi[indices]
     distances = np.array(
-        [
-            np.min(np.linalg.norm((sample - downsampled), axis=1))
-            for sample in samples
-        ]
+        [np.min(np.linalg.norm((sample - downsampled), axis=1)) for sample in samples]
     )
     num_positives = distances[np.where((distances < 1500))].shape[0]
 
