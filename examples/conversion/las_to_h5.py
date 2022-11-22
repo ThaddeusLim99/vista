@@ -128,10 +128,10 @@ def main(args):
         exit(1)
 
     if (
-        aoi_avg[1] > 70000
-        or aoi_avg[1] < -70000
-        or aoi_avg[2] < -20000
-        or aoi_avg[2] > 20000
+        aoi_avg[1] > 50000
+        or aoi_avg[1] < -50000
+        or aoi_avg[2] < -15000
+        or aoi_avg[2] > 15000
     ):
         print("Out of range")
         exit(1)
