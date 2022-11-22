@@ -127,6 +127,15 @@ def main(args):
         print("Visibility OK")
         exit(1)
 
+    if (
+        aoi_avg[1] > 70000
+        or aoi_avg[1] < -70000
+        or aoi_avg[2] < -20000
+        or aoi_avg[2] > 20000
+    ):
+        print("Out of range")
+        exit(1)
+
     with h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "w") as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
