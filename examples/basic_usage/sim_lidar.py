@@ -19,7 +19,7 @@ def main(args):
             "lookahead_road": True,
         }
     )
-    lidar_config = {"yaw_fov": (-180.0, 180.0), "pitch_fov": (-21.0, 14.0)}
+    lidar_config = {"yaw_fov": (-180.0, 180.0), "pitch_fov": (-21.0, 19.0)}
     lidar = car.spawn_lidar(lidar_config)
     display = vista.Display(world)
 
@@ -54,6 +54,13 @@ if __name__ == "__main__":
         nargs="+",
         help="Path to the traces to use for simulation",
     )
+    parser.add_argument(
+        "--resolution",
+        type=float,
+        default=0.1,
+        help="Output resolution",
+    )
+    parser.add_argument("--frame", type=int, help="Frame number")
     args = parser.parse_args()
 
     main(args)

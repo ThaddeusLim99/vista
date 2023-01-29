@@ -39,6 +39,7 @@ class LidarSynthesis:
 
     def __init__(
         self,
+        frame: int,
         input_yaw_fov: Tuple[float, float],
         input_pitch_fov: Tuple[float, float],
         yaw_fov: Optional[Tuple[float, float]] = None,
@@ -49,6 +50,7 @@ class LidarSynthesis:
         load_model: bool = True,
         **kwargs,
     ):
+        self._frame = frame
 
         ### Basic properties required for setting up the synthesizer including
         # the dimensionality and resolution of the image representation space
@@ -57,7 +59,7 @@ class LidarSynthesis:
         self._fov_rad = self._fov * np.pi / 180.0
 
         self._dims = (self._fov[:, 1] - self._fov[:, 0]) / self._res
-        self._dims = np.ceil(self._dims).astype(np.int)[:, np.newaxis]
+        self._dims = np.ceil(self._dims).astype(int)[:, np.newaxis]
 
         yaw_fov = input_yaw_fov if yaw_fov is None else yaw_fov
         pitch_fov = input_pitch_fov if pitch_fov is None else pitch_fov
@@ -129,7 +131,7 @@ class LidarSynthesis:
             pcd,
             channels=(Point.DEPTH, Point.INTENSITY, Point.MASK),
             return_as_tensor=True,
-            near = True,
+            near=True,
         )
         # occluded = self._pcd2sparse(
         #     pcd,
@@ -139,16 +141,17 @@ class LidarSynthesis:
         # )
         # occluded[occluded - visible <= 0] = np.nan
 
-
         # Find occlusions and cull them from the rendering
         occlusions, _ = self._cull_occlusions(visible[:, :, 0])
         visible[occlusions[:, 0], occlusions[:, 1]] = np.nan
         # occluded[~occlusions[:, 0], ~occlusions[:, 1]] = np.nan
 
-        for idx, pcd in enumerate([
-            visible, 
-            # occluded,
-        ]):
+        for idx, pcd in enumerate(
+            [
+                visible,
+                # occluded,
+            ]
+        ):
             fov_range = self._fov_rad[:, [1]] - self._fov_rad[:, [0]]
             step = fov_range / (self._dims)
             angles = np.empty((self._dims[1, 0], self._dims[0, 0], 2), np.float32)
@@ -172,55 +175,20 @@ class LidarSynthesis:
                 * np.cos(angles[:, :, 0])
                 * np.sin(angles[:, :, 1])
             ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
-            z = np.array(
-                pcd[:, :, 0].cpu().numpy() * np.sin(angles[:, :, 0])
-            ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
+            z = np.array(pcd[:, :, 0].cpu().numpy() * np.sin(angles[:, :, 0])).reshape(
+                [self._dims[1, 0] * self._dims[0, 0], 1]
+            )
             xyz = np.append(np.append(x, y, axis=1), -z, axis=1)
-            xyz /= 245000
-
-            import csv
-
-            with open("/tmp/lidar/trajectory.csv", "r") as f:
-                trajectory_info = list(csv.reader(f))
+            # xyz /= 245000
 
             xyz = xyz[~np.isnan(xyz).any(axis=1)]
-            
-            gt_info = np.genfromtxt(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_gt.txt", delimiter=',')
-            np.random.shuffle(gt_info)
-            KNN_data = np.zeros((1024, 128*4))
 
-            for i in range(1024):
-                # KNN
-                distances = np.linalg.norm((xyz - gt_info[i][0:3]), axis=1)
-                KNN_indices = np.argsort(distances)[:128]
-                KNN_data[i] =  np.c_[xyz[KNN_indices], distances[KNN_indices]].flatten(order='C')
-
-            import random
-            tr_te_split = random.choices(["tr", "te"], weights=(80, 20), k=1)[0]
-
-            with h5py.File(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_data_{tr_te_split}.h5", "w") as f:
-                f.create_dataset('point', data=np.array([gt_info[:,0:3]]), compression="gzip", chunks=True, maxshape=(1, 1024, 3))
-                f.create_dataset('data', data=np.array([KNN_data]), compression="gzip", chunks=True, maxshape=(1, 1024, 128*4))
-                f.create_dataset('label', data=np.array([gt_info[:,-1].reshape(1024, 1)]), compression="gzip", chunks=True, maxshape=(1, 1024, 1)) 
-
-            f2 = h5py.File(f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_data_{tr_te_split}.h5", "r")
-            print(f2["point"])
-            print(f2["data"])
-            print(f2["label"])  
-
-            # pcd_type = "visible" if idx == 0 else "occluded"
             np.savetxt(
-                f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_visible.txt",
+                f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}.txt",
                 xyz,
                 delimiter=",",
                 fmt="%f",
             )
-            # np.savetxt(
-            #     f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_downsapled.txt",
-            #     downsampled,
-            #     delimiter=",",
-            #     fmt="%f",
-            # )
 
         return visible, None
 
@@ -424,7 +392,7 @@ class LidarSynthesis:
         slope = self._dims / fov_range
         inds = slope * (angles - self._fov_rad[:, [0]])
 
-        inds = np.floor(inds).astype(np.int)
+        inds = np.floor(inds).astype(int)
         np.clip(inds, np.zeros((2, 1)), self._dims - 1, out=inds)
 
         return inds

@@ -4,9 +4,10 @@ import laspy
 import numpy as np
 import zipfile
 import math
-import csv
+import os
 import random
 from statistics import mean
+import pandas as pd
 
 
 def main(args):
@@ -32,7 +33,11 @@ def main(args):
         order="gps_time",
     )[0]
 
-    frame = random.randint(10000, len(trajectory) - 10000)
+    if args.frame:
+        frame = args.frame
+    else:
+        frame = random.randint(10000, len(trajectory) - 10000)
+
     try:
         pov = trajectory[frame]
     except IndexError:
@@ -43,7 +48,7 @@ def main(args):
         (pov["X"] - last["X"]) ** 2
         + (pov["Y"] - last["Y"]) ** 2
         + (pov["Z"] - last["Z"]) ** 2
-    ) ** (1 / 2) < 300000:
+    ) ** (1 / 2) < 250000:
         exit(1)
 
     pov_X = pov["X"]
@@ -52,7 +57,8 @@ def main(args):
     pov_X_delta = []
     pov_Y_delta = []
     pov_Z_delta = []
-    for i in range(1, 100, 10):
+
+    for i in range(1, 30):
         pov_next = trajectory[frame + i]
         pov_X_delta.append(pov_next["X"] - pov_X)
         pov_Y_delta.append(pov_next["Y"] - pov_Y)
@@ -66,10 +72,17 @@ def main(args):
     y = np.array(las.Y)
     z = np.array(las.Z)
 
-    xyz = np.array([x, y, z]).T
+    xyz = np.asarray([x, y, z], dtype=np.float64).T
 
     # Traslantion
     xyz -= np.array([pov_X, pov_Y, pov_Z])
+
+    xyz_distance = np.sqrt(
+        np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
+    )
+
+    indices = np.where((xyz_distance < 245000))
+    xyz = xyz[indices]
 
     # Rotation 1
     cos_1 = pov_X_delta / ((pov_X_delta**2 + pov_Y_delta**2) ** (0.5))
@@ -84,10 +97,6 @@ def main(args):
         ((pov_X_delta**2 + pov_Y_delta**2) + pov_Z_delta**2) ** (0.5)
     )
     xyz = np.dot(np.array([[cos_2, 0, -sin_2], [0, 1, 0], [sin_2, 0, cos_2]]), xyz.T).T
-
-    xyz_distance = np.sqrt(
-        np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
-    )
 
     # Cross section angle
     cross_section = xyz[
@@ -109,69 +118,23 @@ def main(args):
 
     xyz = np.dot(np.array([[1, 0, 0], [0, cos_3, -sin_3], [0, sin_3, cos_3]]), xyz.T).T
 
-    # Sensor at 2 meter above
-    xyz[:, 2] -= 2000
+    # Sensor at 1.2 meter above
+    xyz[:, 2] -= 1200
 
-    indices = np.where((xyz_distance < 245000))
-    xyz = xyz[indices]
-
-    aoi = xyz[np.where((xyz[:, 0] > 95000))]
-    aoi_avg = np.average(aoi, axis=0)
-    print(aoi_avg)
-    if (
-        aoi_avg[1] < 6000
-        and aoi_avg[1] > -6000
-        and aoi_avg[2] > -6000
-        and aoi_avg[2] < 6000
-    ):
-        print("Visibility OK")
-        exit(1)
-
-    if (
-        aoi_avg[1] > 50000
-        or aoi_avg[1] < -50000
-        or aoi_avg[2] < -15000
-        or aoi_avg[2] > 15000
-    ):
-        print("Out of range")
-        exit(1)
-
-    with h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "w") as f:
+    with h5py.File(
+        f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
+    ) as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
         f["intensity"] = [las.intensity[indices]]
 
-    f2 = h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "r")
+    f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
     print(f2["timestamp"])
     print(f2["xyz"])
     print(f2["intensity"])
 
-    samples = np.random.rand(1024, 3)
-    samples[:, 0] = samples[:, 0] * 150000 + 95000
-    samples[:, 1] = (samples[:, 1] - 0.5) * 100000
-    samples[:, 2] = (samples[:, 2] - 0.5) * 30000
-    np.random.shuffle(aoi)
-    _, indices = np.unique((aoi).round(-2), axis=0, return_index=True)
-    downsampled = aoi[indices]
-    distances = np.array(
-        [np.min(np.linalg.norm((sample - downsampled), axis=1)) for sample in samples]
-    )
-    num_positives = distances[np.where((distances < 1500))].shape[0]
-
-    print(f"Number of samples within 1.5m: {num_positives}")
-
-    gt_xyz = np.c_[samples / 245000, distances]
-
-    with open("/tmp/lidar/trajectory.csv", "a") as f:
-        f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
-    with open("/tmp/lidar/trajectory.csv", "r") as f:
-        trajectory_info = list(csv.reader(f))
-
-    np.savetxt(
-        f"/home/sangwon/Desktop/lidar/{len(trajectory_info)}_gt.txt",
-        gt_xyz,
-        delimiter=",",
-        fmt="%f",
+    pd.DataFrame(xyz).to_csv(
+        f"./examples/vista_traces/lidar_{args.process}/lidar_3d.csv"
     )
 
 
@@ -179,7 +142,8 @@ if __name__ == "__main__":
     # Parse Arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str, help="Path to .las file to convert to .h5")
-    # parser.add_argument("--frame", type=int, help="Frame number")
+    parser.add_argument("--frame", type=int, help="Frame number")
+    parser.add_argument("--process", type=int, help="Process number")
     args = parser.parse_args()
 
     main(args)

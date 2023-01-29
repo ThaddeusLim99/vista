@@ -5,7 +5,6 @@ import numpy as np
 import zipfile
 import math
 import os
-from statistics import mean
 import pandas as pd
 
 
@@ -79,30 +78,21 @@ def main(args):
     # Sensor at 1.2 meter above
     xyz[:, 2] -= 1200
 
-    with h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "w") as f:
+    with h5py.File(
+        f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
+    ) as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
         f["intensity"] = [las.intensity[indices]]
 
-    f2 = h5py.File("./examples/vista_traces/lidar/lidar_3d.h5", "r")
+    f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
     print(f2["timestamp"])
     print(f2["xyz"])
     print(f2["intensity"])
 
-    samples = np.random.rand(1024, 3)
-    samples[:, 0] = samples[:, 0] * 150000 + 95000
-    samples[:, 1] = (samples[:, 1] - 0.5) * 100000
-    samples[:, 2] = (samples[:, 2] - 0.5) * 30000
-
-    pd.DataFrame(xyz).to_csv("./examples/vista_traces/lidar/lidar_3d.csv")
-
-    try:
-        with open("/tmp/lidar/trajectory.csv", "a") as f:
-            f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
-    except FileNotFoundError:
-        os.mkdir("/tmp/lidar")
-        with open("/tmp/lidar/trajectory.csv", "w") as f:
-            f.write(f"{pov_X}, {pov_Y}, {pov_Z}, {sin_1}, {cos_1}, {sin_2}, {cos_2}\n")
+    pd.DataFrame(xyz).to_csv(
+        f"./examples/vista_traces/lidar_{args.process}/lidar_3d.csv"
+    )
 
 
 if __name__ == "__main__":
@@ -110,6 +100,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str, help="Path to .las file to convert to .h5")
     parser.add_argument("--frame", type=int, help="Frame number")
+    parser.add_argument("--process", type=int, help="Process number")
     args = parser.parse_args()
 
     main(args)
