@@ -17,13 +17,13 @@ def main(args):
 
         args.input = f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}"
 
-        print(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
+        print(f"Un-zipping to /tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
 
     las = laspy.read(args.input)
 
-    if args.input.startswith("/tmp/") and args.input.endswith(".las"):
+    if args.input.startswith("/tmp/lidar/") and args.input.endswith(".las"):
         os.remove(args.input)
-        print("Remove tmp file")
+        print(f"Removing {args.input}")
 
     trajectory = np.sort(
         las.points[
