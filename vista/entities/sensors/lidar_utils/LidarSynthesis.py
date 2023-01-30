@@ -152,42 +152,33 @@ class LidarSynthesis:
                 # occluded,
             ]
         ):
+            pcd = pcd[:, :, 0]
+            pcd_idx = torch.nonzero(~torch.isnan(pcd))
+            depths = pcd.flatten()[~torch.isnan(pcd.flatten())]
             fov_range = self._fov_rad[:, [1]] - self._fov_rad[:, [0]]
             step = fov_range / (self._dims)
-            angles = np.empty((self._dims[1, 0], self._dims[0, 0], 2), np.float32)
-            angles.fill(np.nan)
-            for i in range(-int(self._dims[1, 0] / 2), int(self._dims[1, 0] / 2)):
-                for j in range(-int(self._dims[0, 0] / 2), int(self._dims[0, 0] / 2)):
-                    angles[i + int(self._dims[1, 0] / 2)][
-                        j + int(self._dims[0, 0] / 2)
-                    ][0] = step[1] * (i + 10)
-                    angles[i + int(self._dims[1, 0] / 2)][
-                        j + int(self._dims[0, 0] / 2)
-                    ][1] = step[0] * (j)
 
-            x = np.array(
-                pcd[:, :, 0].cpu().numpy()
-                * np.cos(angles[:, :, 0])
-                * np.cos(angles[:, :, 1])
-            ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
-            y = np.array(
-                pcd[:, :, 0].cpu().numpy()
-                * np.cos(angles[:, :, 0])
-                * np.sin(angles[:, :, 1])
-            ).reshape([self._dims[1, 0] * self._dims[0, 0], 1])
-            z = np.array(pcd[:, :, 0].cpu().numpy() * np.sin(angles[:, :, 0])).reshape(
-                [self._dims[1, 0] * self._dims[0, 0], 1]
-            )
-            xyz = np.append(np.append(x, y, axis=1), -z, axis=1)
+            angles = torch.stack(
+                (
+                    torch.tensor(step[1]).to(self.device)
+                    * (pcd_idx[:, 0] - int(self._dims[1, 0] / 2) + 10),
+                    torch.tensor(step[0]).to(self.device)
+                    * (pcd_idx[:, 1] - int(self._dims[0, 0] / 2)),
+                )
+            ).T
+
+            x = depths * torch.cos(angles[:, 0]) * torch.cos(angles[:, 1])
+            y = depths * torch.cos(angles[:, 0]) * torch.sin(angles[:, 1])
+            z = -depths * torch.sin(angles[:, 0])
+
+            xyz = torch.stack((x, y, z)).T
             # xyz /= 245000
 
-            xyz = xyz[~np.isnan(xyz).any(axis=1)]
+            import pandas
 
-            np.savetxt(
+            pandas.DataFrame(xyz.cpu().numpy()).to_csv(
                 f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}.txt",
-                xyz,
-                delimiter=",",
-                fmt="%f",
+                index=False,
             )
 
         return visible, None
