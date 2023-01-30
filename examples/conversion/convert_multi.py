@@ -38,6 +38,9 @@ def main(args):
     else:
         frame = len(trajectory) // 2
 
+    with open(f"./examples/vista_traces/lidar_{args.process}/log.txt", "a") as f:
+        print(f"{args.input.split('/')[-1]} / frame # {frame}", file=f)
+
     try:
         pov = trajectory[frame]
     except IndexError:
