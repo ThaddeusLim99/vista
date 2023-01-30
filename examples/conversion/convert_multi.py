@@ -6,11 +6,14 @@ import zipfile
 import math
 import os
 import random
+import torch
 from statistics import mean
 import pandas as pd
 
 
 def main(args):
+    device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
+
     if args.input.endswith(".zip"):
         with zipfile.ZipFile(args.input, "r") as zip_ref:
             zip_ref.extractall("/tmp/lidar")
@@ -89,12 +92,17 @@ def main(args):
     )
 
     indices = np.where((xyz_distance < 245000))
-    xyz = xyz[indices]
+    xyz = torch.tensor(xyz[indices]).to(device)
 
     # Rotation 1
     cos_1 = pov_X_delta / ((pov_X_delta**2 + pov_Y_delta**2) ** (0.5))
     sin_1 = pov_Y_delta / ((pov_X_delta**2 + pov_Y_delta**2) ** (0.5))
-    xyz = np.dot(np.array([[cos_1, sin_1, 0], [-sin_1, cos_1, 0], [0, 0, 1]]), xyz.T).T
+    xyz = torch.matmul(
+        torch.tensor([[cos_1, sin_1, 0], [-sin_1, cos_1, 0], [0, 0, 1]])
+        .double()
+        .to(device),
+        xyz.double().T,
+    ).T
 
     # Rotation 2
     cos_2 = ((pov_X_delta**2 + pov_Y_delta**2) ** (0.5)) / (
@@ -103,7 +111,12 @@ def main(args):
     sin_2 = pov_Z_delta / (
         ((pov_X_delta**2 + pov_Y_delta**2) + pov_Z_delta**2) ** (0.5)
     )
-    xyz = np.dot(np.array([[cos_2, 0, -sin_2], [0, 1, 0], [sin_2, 0, cos_2]]), xyz.T).T
+    xyz = torch.matmul(
+        torch.tensor([[cos_2, 0, -sin_2], [0, 1, 0], [sin_2, 0, cos_2]])
+        .double()
+        .to(device),
+        xyz.double().T,
+    ).T
 
     # Cross section angle
     cross_section = xyz[
@@ -112,28 +125,31 @@ def main(args):
         & (xyz[:, 1] < 1000)
         & (xyz[:, 1] > -1000)
     ]
-    tan_li = []
-    for _ in range(100):
-        random_idx = random.randint(0, cross_section.shape[0] - 1)
-        if cross_section[random_idx][1] != 0:
-            tan_li.append(cross_section[random_idx][2] / cross_section[random_idx][1])
 
-    tangent = mean(tan_li)
+    tan_li = cross_section[:, 2] / cross_section[:, 1]
+
+    tangent = torch.nanmean(tan_li)
     cross_angle = math.atan(tangent)
     cos_3 = math.cos(cross_angle)
     sin_3 = math.sin(cross_angle)
 
-    xyz = np.dot(np.array([[1, 0, 0], [0, cos_3, -sin_3], [0, sin_3, cos_3]]), xyz.T).T
+    xyz = torch.matmul(
+        torch.tensor([[1, 0, 0], [0, cos_3, -sin_3], [0, sin_3, cos_3]])
+        .double()
+        .to(device),
+        xyz.double().T,
+    ).T
 
     # Sensor at 1.2 meter above
     xyz[:, 2] -= 1200
+    xyz = xyz.cpu().numpy()
 
     with h5py.File(
         f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
     ) as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
-        f["intensity"] = [las.intensity[indices]]
+        f["intensity"] = [las.intensity[indices[0]]]
 
     f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
     print(f2["timestamp"])
