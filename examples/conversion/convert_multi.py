@@ -36,7 +36,7 @@ def main(args):
     if args.frame:
         frame = args.frame
     else:
-        frame = random.randint(10000, len(trajectory) - 10000)
+        frame = len(trajectory) // 2
 
     try:
         pov = trajectory[frame]
