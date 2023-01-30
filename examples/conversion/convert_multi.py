@@ -21,6 +21,10 @@ def main(args):
 
     las = laspy.read(args.input)
 
+    if args.input.startswith("/tmp/") and args.input.endswith(".las"):
+        os.remove(args.input)
+        print("Remove tmp file")
+
     trajectory = np.sort(
         las.points[
             np.array(
