@@ -15,6 +15,7 @@ def main(args):
     device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
     print(device)
 
+    erase = False
     if args.input.endswith(".zip"):
         if (
             os.path.exists(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
@@ -26,6 +27,8 @@ def main(args):
             with zipfile.ZipFile(args.input, "r") as zip_ref:
                 zip_ref.extractall("/tmp/lidar")
             print("Un-zipping done")
+        else:
+            erase = True
 
         args.input = f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}"
 
@@ -38,7 +41,7 @@ def main(args):
             "Un-zipping not finished. Wait 5 seconds."
             time.sleep(5)
 
-    if args.input.startswith("/tmp/lidar/") and args.input.endswith(".las"):
+    if erase and args.input.startswith("/tmp/lidar/") and args.input.endswith(".las"):
         os.remove(args.input)
         print(f"Removing {args.input}")
 
