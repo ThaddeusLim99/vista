@@ -5,7 +5,7 @@ import numpy as np
 import zipfile
 import math
 import os
-import random
+import time
 import torch
 from statistics import mean
 import pandas as pd
@@ -29,7 +29,14 @@ def main(args):
 
         args.input = f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}"
 
-    las = laspy.read(args.input)
+    read_las = False
+    while read_las == False:
+        try:
+            las = laspy.read(args.input)
+            read_las = True
+        except ValueError:
+            "Un-zipping not finished. Wait 5 seconds."
+            time.sleep(5)
 
     if args.input.startswith("/tmp/lidar/") and args.input.endswith(".las"):
         os.remove(args.input)
