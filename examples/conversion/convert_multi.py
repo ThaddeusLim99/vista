@@ -38,7 +38,7 @@ def main(args):
             las = laspy.read(args.input)
             read_las = True
         except ValueError:
-            "Un-zipping not finished. Wait 5 seconds."
+            print("Un-zipping not finished. Wait 5 seconds.")
             time.sleep(5)
 
     if erase and args.input.startswith("/tmp/lidar/") and args.input.endswith(".las"):

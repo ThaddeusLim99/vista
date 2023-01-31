@@ -14,7 +14,7 @@ def main(args):
                 laspy.read(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
                 read_las = True
             except ValueError:
-                "Un-zipping not finished. Wait 5 seconds."
+                print("Un-zipping not finished. Wait 5 seconds.")
                 time.sleep(5)
         time.sleep(5)
         os.remove(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
