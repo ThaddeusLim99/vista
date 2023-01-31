@@ -70,6 +70,7 @@ class LidarSynthesis:
         # Create a list of offset coordinates within a radius R of the origin,
         # but excluding the origin itself.
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
+        print(self.device)
         cull_axis = torch.arange(-culling_r, culling_r + 1)
         offsets = torch.meshgrid(cull_axis, cull_axis)
         offsets = torch.reshape(torch.stack(offsets, axis=-1), (-1, 2))  # (Nx2)

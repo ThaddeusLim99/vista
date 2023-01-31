@@ -13,14 +13,21 @@ import pandas as pd
 
 def main(args):
     device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
+    print(device)
 
     if args.input.endswith(".zip"):
-        with zipfile.ZipFile(args.input, "r") as zip_ref:
-            zip_ref.extractall("/tmp/lidar")
+        if (
+            os.path.exists(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
+            == False
+        ):
+            print(
+                f"Un-zipping to /tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}"
+            )
+            with zipfile.ZipFile(args.input, "r") as zip_ref:
+                zip_ref.extractall("/tmp/lidar")
+            print("Un-zipping done")
 
         args.input = f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}"
-
-        print(f"Un-zipping to /tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
 
     las = laspy.read(args.input)
 
