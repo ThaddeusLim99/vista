@@ -4,10 +4,7 @@ import os
 
 
 def main(args):
-    if (
-        os.path.exists(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
-        == False
-    ):
+    if os.path.exists(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}"):
         print(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]} already exists")
         exit(1)
     print(f"Un-zipping to /tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
