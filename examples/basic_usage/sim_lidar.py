@@ -23,6 +23,8 @@ def main(args):
         "yaw_fov": (-180.0, 180.0),
         "pitch_fov": (-21.0, 19.0),
         "frame": args.frame,
+        "yaw_res": args.resolution,
+        "pitch_res": args.resolution,
     }
     lidar = car.spawn_lidar(lidar_config)
     display = vista.Display(world)
