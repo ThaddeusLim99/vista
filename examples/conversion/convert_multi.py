@@ -40,6 +40,8 @@ def main(args):
         except ValueError:
             print("Un-zipping not finished. Wait 5 seconds.")
             time.sleep(5)
+        except OSError:
+            exit(1)
 
     if erase and args.input.startswith("/tmp/lidar/") and args.input.endswith(".las"):
         os.remove(args.input)
