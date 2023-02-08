@@ -25,6 +25,8 @@ def main(args):
         "frame": args.frame,
         "yaw_res": args.resolution,
         "pitch_res": args.resolution,
+        "downsample": args.downsample,
+        "culling_r": args.culling_r,
     }
     lidar = car.spawn_lidar(lidar_config)
     display = vista.Display(world)
@@ -66,7 +68,10 @@ if __name__ == "__main__":
         default=0.1,
         help="Output resolution",
     )
+    parser.add_argument("--culling-r", type=int, default=1, help="Culling Rate")
     parser.add_argument("--frame", type=int, help="Frame number")
+    parser.add_argument("--downsample", action="store_true")
+
     args = parser.parse_args()
 
     main(args)

@@ -184,7 +184,7 @@ class LidarSynthesis:
             # xyz /= 245000
             if self._downsample:
                 prob = (depths / 245000) ** math.e
-                indices = prob.multinomial(len(xyz) // 10, replacement=True)
+                indices = prob.multinomial(len(xyz) // 100, replacement=True)
                 xyz = xyz[indices]
 
             import pandas
