@@ -13,16 +13,7 @@ def main(args):
     device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
     print(device)
 
-    if args.input.endswith(".zip"):
-        with zipfile.ZipFile(args.input, "r") as zip_ref:
-            zip_ref.extractall("/tmp/lidar")
-
-        args.input = f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}"
-
-        print(f"/tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
-
     las = laspy.read(args.input)
-    # print(las.X, las.Y, las.Z)
 
     road_points = pd.read_csv(
         "./examples/Trajectory/road_points.csv", sep=",", header=None
@@ -34,13 +25,13 @@ def main(args):
         "./examples/Trajectory/leftwards.csv", sep=",", header=None
     ).values
 
-    trajectory = road_points * 1000
+    trajectory = road_points
     i = args.frame
     print(f"Frame #: {i}")
 
-    pov_X = trajectory[i][0] % 1000000
-    pov_Y = trajectory[i][1] % 1000000
-    pov_Z = trajectory[i][2]
+    pov_X = (trajectory[i][0] - 617000) * 1000
+    pov_Y = (trajectory[i][1] - 5658000) * 1000
+    pov_Z = (trajectory[i][2]) * 1000
 
     x = np.array(las.X)
     y = np.array(las.Y)
@@ -55,7 +46,7 @@ def main(args):
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
     )
 
-    indices = np.where((xyz_distance < 100000))
+    indices = np.where((xyz_distance < 245000))
     xyz = torch.tensor(xyz[indices]).to(device)
 
     # Rotation 1

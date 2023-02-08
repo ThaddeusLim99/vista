@@ -48,9 +48,11 @@ class LidarSynthesis:
         pitch_res: float = 0.1,
         culling_r: int = 1,
         load_model: bool = True,
+        downsample: bool = False,
         **kwargs,
     ):
         self._frame = frame
+        self._downsample = downsample
 
         ### Basic properties required for setting up the synthesizer including
         # the dimensionality and resolution of the image representation space
@@ -134,6 +136,7 @@ class LidarSynthesis:
             return_as_tensor=True,
             near=True,
         )
+
         # occluded = self._pcd2sparse(
         #     pcd,
         #     channels=(Point.DEPTH, Point.INTENSITY, Point.MASK),
@@ -168,17 +171,26 @@ class LidarSynthesis:
                 )
             ).T
 
+            depths, indices = torch.sort(depths)
+            angles = angles[indices, :]
+
             x = depths * torch.cos(angles[:, 0]) * torch.cos(angles[:, 1])
             y = depths * torch.cos(angles[:, 0]) * torch.sin(angles[:, 1])
             z = -depths * torch.sin(angles[:, 0])
 
+            import math
+
             xyz = torch.stack((x, y, z)).T
             # xyz /= 245000
+            if self._downsample:
+                prob = (depths / 245000) ** math.e
+                indices = prob.multinomial(len(xyz) // 10, replacement=True)
+                xyz = xyz[indices]
 
             import pandas
 
             pandas.DataFrame(xyz.cpu().numpy()).to_csv(
-                f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}.txt",
+                f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}_{self._res[0]: .2f}.txt",
                 index=False,
             )
 
