@@ -180,18 +180,20 @@ class LidarSynthesis:
 
             import math
 
-            xyz = torch.stack((x, y, z)).T
+            xyzypd = torch.stack((x, y, z, angles[:, 0], -angles[:, 1], depths)).T
             # xyz /= 245000
             if self._downsample:
                 prob = (depths / 245000) ** math.e
-                indices = prob.multinomial(len(xyz) // 100, replacement=True)
-                xyz = xyz[indices]
+                indices = prob.multinomial(len(xyzypd) // 100, replacement=True)
+                xyzypd = xyzypd[indices]
 
             import pandas
 
             outpath = f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}_{self._res[0]: .2f}.txt"
             outpath.replace(" ", "")
-            pandas.DataFrame(xyz.cpu().numpy()).to_csv(
+            df = pandas.DataFrame(xyzypd.cpu().numpy())
+            df.columns = ["x", "y", "z", "yaw", "pitch", "depth"]
+            df.to_csv(
                 outpath,
                 index=False,
             )
