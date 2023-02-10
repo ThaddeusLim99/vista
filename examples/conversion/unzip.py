@@ -34,7 +34,7 @@ def main(args):
     print("Un-zipping done")
     print("Total: %d GiB" % (total // (2**30)))
     print("Used: %d GiB" % (used // (2**30)))
-    print("Free: %d GiB" % (free // (2**30)))
+    print(f"{used*100 / total: .2f}% full")
 
 
 if __name__ == "__main__":
