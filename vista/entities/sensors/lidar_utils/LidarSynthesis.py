@@ -165,7 +165,7 @@ class LidarSynthesis:
             angles = torch.stack(
                 (
                     torch.tensor(step[1]).to(self.device)
-                    * (pcd_idx[:, 0] - int(self._dims[1, 0] / 2) + 10),
+                    * (pcd_idx[:, 0] - int(self._dims[1, 0] / 2)),
                     torch.tensor(step[0]).to(self.device)
                     * (pcd_idx[:, 1] - int(self._dims[0, 0] / 2)),
                 )
