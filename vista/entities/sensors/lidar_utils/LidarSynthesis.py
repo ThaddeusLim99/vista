@@ -189,8 +189,10 @@ class LidarSynthesis:
 
             import pandas
 
+            outpath = f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}_{self._res[0]: .2f}.txt"
+            outpath.replace(" ", "")
             pandas.DataFrame(xyz.cpu().numpy()).to_csv(
-                f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}_{self._res[0]: .2f}.txt",
+                outpath,
                 index=False,
             )
 
