@@ -24,10 +24,10 @@ def main(args):
         exit(1)
 
     print(f"Un-zipping to /tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
-    total, used, free = shutil.disk_usage("/")
+    total, used, _ = shutil.disk_usage("/")
     while used / total > 0.4:
-        total, used, free = shutil.disk_usage("/")
         time.sleep(60)
+        total, used, _ = shutil.disk_usage("/")
     with zipfile.ZipFile(args.input, "r") as zip_ref:
         zip_ref.extractall("/tmp/lidar")
 
