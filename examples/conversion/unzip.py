@@ -3,6 +3,7 @@ import zipfile
 import os
 import laspy
 import time
+import shutil
 
 
 def main(args):
@@ -23,9 +24,16 @@ def main(args):
         exit(1)
 
     print(f"Un-zipping to /tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
+    total, used, free = shutil.disk_usage("/")
+    while used / total < 0.4:
+        time.sleep(60)
     with zipfile.ZipFile(args.input, "r") as zip_ref:
         zip_ref.extractall("/tmp/lidar")
+
     print("Un-zipping done")
+    print("Total: %d GiB" % (total // (2**30)))
+    print("Used: %d GiB" % (used // (2**30)))
+    print("Free: %d GiB" % (free // (2**30)))
 
 
 if __name__ == "__main__":
