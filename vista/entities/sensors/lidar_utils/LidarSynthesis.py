@@ -182,17 +182,16 @@ class LidarSynthesis:
 
             xyzypd = torch.stack((x, y, z, angles[:, 0], -angles[:, 1], depths)).T
             # xyz /= 245000
-            if self._downsample:
-                prob = (depths / 245000) ** math.e
-                indices = prob.multinomial(len(xyzypd) // 100, replacement=True)
-                xyzypd = xyzypd[indices]
 
             import pandas
 
-            outpath = f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}_{self._res[0]: .2f}.txt"
-            outpath.replace(" ", "")
             df = pandas.DataFrame(xyzypd.cpu().numpy())
             df.columns = ["x", "y", "z", "yaw", "pitch", "depth"]
+            if self._downsample:
+                df = df.drop(df[df.depth < 50000].index)
+
+            outpath = f"/home/sangwon/Desktop/vista/examples/vista_traces/lidar_output/output_{self._frame + 1}_{self._res[0]: .2f}.txt"
+            outpath = "".join(outpath.split(" "))
             df.to_csv(
                 outpath,
                 index=False,

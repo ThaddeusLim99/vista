@@ -25,7 +25,7 @@ def main(args):
 
     print(f"Un-zipping to /tmp/lidar/{args.input.split('/')[-1].split('.zip')[0]}")
     total, used, _ = shutil.disk_usage("/")
-    while used / total > 0.2:
+    while used / total > 0.9:
         print(f"{used*100 / total: .2f}% full")
         time.sleep(60)
         total, used, _ = shutil.disk_usage("/")
