@@ -46,7 +46,7 @@ def main(args):
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
     )
 
-    indices = np.where((xyz_distance < 245000))
+    indices = np.where((xyz_distance < args.range * 1000))
     xyz = torch.tensor(xyz[indices]).to(device)
 
     # Rotation 1
@@ -90,19 +90,19 @@ def main(args):
     xyz = xyz.cpu().numpy()
 
     with h5py.File(
-        f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
+        f"./examples/vista_traces/lidar/lidar_3d.h5", "w"
     ) as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
         f["xyz"] = [xyz]
         f["intensity"] = [las.intensity[indices]]
 
-    f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
+    f2 = h5py.File(f"./examples/vista_traces/lidar/lidar_3d.h5", "r")
     print(f2["timestamp"])
     print(f2["xyz"])
     print(f2["intensity"])
 
     pd.DataFrame(xyz).to_csv(
-        f"./examples/vista_traces/lidar_{args.process}/lidar_3d.csv"
+        f"./examples/vista_traces/lidar/lidar_3d.csv"
     )
 
 
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str, help="Path to .las file to convert to .h5")
     parser.add_argument("--frame", type=int, help="Frame number")
-    parser.add_argument("--process", type=int, help="Process number")
+    parser.add_argument("--range", type=int, help="Range distance in metres")
     args = parser.parse_args()
 
     main(args)

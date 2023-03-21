@@ -20,8 +20,8 @@ def main(args):
         }
     )
     lidar_config = {
-        "yaw_fov": (-180.0, 180.0),
-        "pitch_fov": (-21.0, 19.0),
+        "yaw_fov": (args.yaw_min, args.yaw_max),
+        "pitch_fov": (args.pitch_min, args.pitch_max),
         "frame": args.frame,
         "yaw_res": args.resolution,
         "pitch_res": args.resolution,
@@ -67,6 +67,30 @@ if __name__ == "__main__":
         type=float,
         default=0.1,
         help="Output resolution",
+    )
+    parser.add_argument(
+        "--yaw-min",
+        type=float,
+        default=-180,
+        help="Minimum yaw angle",
+    )
+    parser.add_argument(
+        "--yaw-max",
+        type=float,
+        default=180,
+        help="Maximum yaw angle",
+    )
+    parser.add_argument(
+        "--pitch-min",
+        type=float,
+        default=-21,
+        help="Minimum pitch angle",
+    )
+    parser.add_argument(
+        "--pitch-max",
+        type=float,
+        default=19,
+        help="Maximum pitch angle",
     )
     parser.add_argument("--culling-r", type=int, default=1, help="Culling Rate")
     parser.add_argument("--frame", type=int, help="Frame number")
