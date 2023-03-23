@@ -46,11 +46,7 @@ def main(args):
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
     )
 
-    print(xyz_distance)
-    print(args.range * 1000)
     indices = np.where((xyz_distance < args.range * 1000))
-    print(xyz.shape)
-    print(xyz[indices].shape)
     xyz = torch.tensor(xyz[indices]).to(device)
 
     # Rotation 1
