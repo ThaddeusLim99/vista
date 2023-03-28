@@ -14,7 +14,8 @@ def main(args):
     print(device)
 
     las = laspy.read(args.input)
-
+    # las_offsets = las.header.offsets
+    
     road_points = pd.read_csv(
         "./examples/Trajectory/road_points.csv", sep=",", header=None
     ).values
@@ -29,15 +30,16 @@ def main(args):
     i = args.frame
     print(f"Frame #: {i}")
 
-    pov_X = (trajectory[i][0] - 617000) * 1000
-    pov_Y = (trajectory[i][1] - 5658000) * 1000
+    # Local coordinates in mm
+    pov_X = (trajectory[i][0]) * 1000
+    pov_Y = (trajectory[i][1]) * 1000
     pov_Z = (trajectory[i][2]) * 1000
 
-    x = np.array(las.X)
-    y = np.array(las.Y)
-    z = np.array(las.Z)
-
-    xyz = np.asarray([x, y, z], dtype=np.float64).T / 100
+    # Global coordinates in m
+    x = (np.array(las.x)) * 1000
+    y = (np.array(las.y)) * 1000
+    z = np.array(las.z) * 1000
+    xyz = np.asarray([x, y, z], dtype=np.float64).T
 
     # Traslantion
     xyz -= np.array([pov_X, pov_Y, pov_Z])
@@ -46,6 +48,7 @@ def main(args):
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
     )
 
+    # mm distance less than the FOV
     indices = np.where((xyz_distance < args.range * 1000))
     xyz = torch.tensor(xyz[indices]).to(device)
 
@@ -85,6 +88,8 @@ def main(args):
         xyz.double().T,
     ).T
 
+    print(xyz)
+
     # Sensor at 1.2 meter above
     xyz[:, 2] -= 1200
     xyz = xyz.cpu().numpy()
@@ -93,8 +98,8 @@ def main(args):
         f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
     ) as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
-        f["xyz"] = [xyz]
-        f["intensity"] = [las.intensity[indices]]
+        f["xyz"] = xyz
+        f["intensity"] = las.intensity[indices]
 
     f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
     print(f2["timestamp"])
