@@ -98,8 +98,8 @@ def main(args):
         f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
     ) as f:
         f["timestamp"] = [[0], [0.1], [0.2]]
-        f["xyz"] = xyz
-        f["intensity"] = las.intensity[indices]
+        f["xyz"] = [xyz]
+        f["intensity"] = [las.intensity[indices]]
 
     f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
     print(f2["timestamp"])
