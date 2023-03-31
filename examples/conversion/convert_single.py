@@ -88,8 +88,6 @@ def main(args):
         xyz.double().T,
     ).T
 
-    print(xyz)
-
     # Sensor at 1.2 meter above
     xyz[:, 2] -= 1200
     xyz = xyz.cpu().numpy()
@@ -105,10 +103,6 @@ def main(args):
     print(f2["timestamp"])
     print(f2["xyz"])
     print(f2["intensity"])
-
-    pd.DataFrame(xyz).to_csv(
-        f"./examples/vista_traces/lidar_{args.process}/lidar_3d.csv"
-    )
 
 
 if __name__ == "__main__":
