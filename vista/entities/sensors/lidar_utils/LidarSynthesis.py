@@ -190,7 +190,7 @@ class LidarSynthesis:
             if self._downsample:
                 df = df.drop(df[df.depth < 50000].index)
 
-            outpath = f"./examples/vista_traces/lidar_output/output_{self._frame + 1}_{self._res[0]: .2f}.txt"
+            outpath = f"./examples/vista_traces/lidar_output/output_{self._frame}_{self._res[0]: .2f}.txt"
             outpath = "".join(outpath.split(" "))
             df.to_csv(
                 outpath,
