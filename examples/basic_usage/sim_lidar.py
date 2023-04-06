@@ -27,6 +27,7 @@ def main(args):
         "pitch_res": args.resolution,
         "downsample": args.downsample,
         "culling_r": args.culling_r,
+        "roadsection_filename": args.filename
     }
     lidar = car.spawn_lidar(lidar_config)
     display = vista.Display(world)
@@ -95,6 +96,7 @@ if __name__ == "__main__":
     parser.add_argument("--culling-r", type=int, default=1, help="Culling Rate")
     parser.add_argument("--frame", type=int, help="Frame number")
     parser.add_argument("--downsample", action="store_true")
+    parser.add_argument("--filename", type=str, help="Filename of the .las file")
 
     args = parser.parse_args()
 

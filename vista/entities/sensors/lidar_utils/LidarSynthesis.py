@@ -51,6 +51,7 @@ class LidarSynthesis:
         downsample: bool = False,
         **kwargs,
     ):
+        self.roadsection_filename = kwargs["roadsection_filename"] # Way to pass the filename from shell script
         self._frame = frame
         self._downsample = downsample
 
@@ -157,7 +158,7 @@ class LidarSynthesis:
             ]
         ):
             pcd = pcd[:, :, 0]
-            pcd_idx = torch.nonzero(~torch.isnan(pcd))
+            pcd_idx = torch.nonzero(~torch.isnan(pcd)) # Get indices of non-nan values; those are the indices of the non occluded points
             depths = pcd.flatten()[~torch.isnan(pcd.flatten())]
             fov_range = self._fov_rad[:, [1]] - self._fov_rad[:, [0]]
             step = fov_range / (self._dims)
@@ -178,19 +179,66 @@ class LidarSynthesis:
             y = depths * torch.cos(angles[:, 0]) * torch.sin(angles[:, 1])
             z = -depths * torch.sin(angles[:, 0])
 
+            # These should be in radians already, I think.
+            yaw = angles[:, 0]    # azimuth
+            pitch = -angles[:, 1] # elevation
+                                  # depths is given already
+
+            # Spherically voxelize our point cloud
+            # Divide spherical coordinates by the spherical voxel size define
+            # by the sensor precision (manually defined for range)
+            vx_yaw = torch.floor(yaw / self._res[0])
+            vx_pch = torch.floor(pitch / self._res[1])
+            vx_rng = torch.floor(depths / 0.1)
+
+            # Get range for integration 
+            yaw_low  = vx_yaw * self._res[0]
+            pch_low  = vx_pch * self._res[1]
+            rng_low  = vx_rng * 0.1
+            yaw_high = yaw_low + self._res[0]
+            pch_high = pch_low + self._res[1]
+            rng_high = rng_low + 0.1
+            
+            volume = (1/3)*(
+                torch.pow(rng_high, 3)-torch.pow(rng_low, 3)
+                )*(
+                torch.cos(pch_low)-torch.cos(pch_high)
+                )*(
+                yaw_high-yaw_low)
+
+            # TODO Parse sensor configuration input to LidarSynthesis.py
+            #max_volume = (1/3)*(
+            #    torch.pow(SENSORCON_RANGE_HIGH, 3)-torch.pow(SENSORCON_RANGE_LOW, 3)
+            #    )*(
+            #    torch.cos(self._fov_rad[1, 0])-torch.cos(self._fov_rad[1, 1])
+            #    )*(
+            #    self._fov_rad[0, 1]-self._fov_rad[0, 0])
+
+            # azimuth_capacity = torch.floor((self._fov[0,1]-self._fov[0,0])/self._res[0])
+            # elevation_capacity = torch.floor((self._fov[1,1]-self._fov[1,0])/self._res[1])
+            # radius_capacity = torch.floor((SENSORCON_RANGE_HIGH-SENSORCON_RANGE_LOW)/0.1)
+            # total_voxels = azimuth_capacity * elevation_capacity * radius_capacity
+
             import math
 
-            xyzypd = torch.stack((x, y, z, angles[:, 0], -angles[:, 1], depths)).T
+            # Note that these are all of the points for each frame
+            # xyzypdv = torch.stack((x, y, z, yaw, pitch, depths, volume)).T
+            xyzypdv = torch.stack((x, y, z, yaw, pitch, depths)).T
+            # Simple: divide total number of rows for xyzypdv by the total number of voxels (should be calculatable)
+            # Volumetric: divide occupied voxel volume by total voxel volume (which should given by depth)
             # xyz /= 245000
 
             import pandas
 
-            df = pandas.DataFrame(xyzypd.cpu().numpy())
+            df = pandas.DataFrame(xyzypdv.cpu().numpy())
+            # df.columns = ["x", "y", "z", "yaw", "pitch", "depth", "volume"] # get volume, and save to tmp/... .txt?
             df.columns = ["x", "y", "z", "yaw", "pitch", "depth"]
             if self._downsample:
                 df = df.drop(df[df.depth < 50000].index)
 
-            outpath = f"./examples/vista_traces/lidar_output/output_{self._frame}_{self._res[0]: .2f}.txt"
+
+            #outpath = f"./examples/vista_traces/lidar_output/output_{self._frame}_{self._res[0]: .2f}.txt"
+            outpath = f"./examples/vista_traces/lidar_output/{self.roadsection_filename}/output_{self._frame}_{self._res[0]: .2f}.txt"
             outpath = "".join(outpath.split(" "))
             df.to_csv(
                 outpath,
@@ -201,7 +249,7 @@ class LidarSynthesis:
 
     def _pcd2sparse(
         self,
-        pcd: Pointcloud,
+        pcd: Pointcloud,  
         channels: Point = Point.DEPTH,
         return_as_tensor: bool = False,
         near: bool = False,

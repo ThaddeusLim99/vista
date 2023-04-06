@@ -8,23 +8,53 @@ import os
 import torch
 import pandas as pd
 
+import gen_traj
+from LasPointCloud import LasPointCloud
+
 
 def main(args):
+    
+    # Use this if you want to manually generate a trajectory for each process
+    # It may be faster to use a pregenerated trajectory
+    usePregenerated = True;
+    
     device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
     print(device)
 
     las = laspy.read(args.input)
     # las_offsets = las.header.offsets
     
-    road_points = pd.read_csv(
-        "./examples/Trajectory/road_points.csv", sep=",", header=None
-    ).values
-    forwards = pd.read_csv(
-        "./examples/Trajectory/forwards.csv", sep=",", header=None
-    ).values
-    leftwards = pd.read_csv(
-        "./examples/Trajectory/leftwards.csv", sep=",", header=None
-    ).values
+    filename_cut = os.path.basename(args.input) # Converted outputs are for a specific road section
+    
+    # Manually input pregenerated trajectories (for now)
+    if usePregenerated:
+      path_road_points = "./examples/Trajectory/" / filename_cut / "road_points.csv"
+      road_points = pd.read_csv(
+          path_road_points, sep=",", header=None
+      ).values
+      path_forwards = "./examples/Trajectory/" / filename_cut / "forwards.csv"
+      forwards = pd.read_csv(
+          path_forwards sep=",", header=None
+      ).values
+      path_leftwards = "./examples/Trajectory/" / filename_cut / "leftwards.csv"
+      leftwards = pd.read_csv(
+          path_leftwards, sep=",", header=None
+      ).values
+    else:
+
+      # Generate our trajectories as we go
+      las_struct = LasPointCloud(
+        las.x, 
+        las.y, 
+        las.z, 
+        las.gps_time, 
+        las.scan_angle_rank, 
+        las.point_source_id
+      )
+
+      traj = gen_traj.TrajectoryConfig(2.0, 1.0)
+
+      road_points, forwards, leftwards, upwards = gen_traj.generate_trajectory(True, las_struct, traj)
 
     trajectory = road_points
     i = args.frame
@@ -42,7 +72,7 @@ def main(args):
     xyz = np.asarray([x, y, z], dtype=np.float64).T
 
     # Traslantion
-    xyz -= np.array([pov_X, pov_Y, pov_Z])
+    xyz -= np.array([pov_X, pov_Y, pov_Z]) # Inverse: Add the pov.
 
     xyz_distance = np.sqrt(
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
@@ -55,6 +85,7 @@ def main(args):
     # Rotation 1
     cos_1 = forwards[i][0] / ((forwards[i][0] ** 2 + forwards[i][1] ** 2) ** (0.5))
     sin_1 = forwards[i][1] / ((forwards[i][0] ** 2 + forwards[i][1] ** 2) ** (0.5))
+    # Inverse: cos -sin sin cos (swap the sin signs)
     xyz = torch.matmul(
         torch.tensor([[cos_1, sin_1, 0], [-sin_1, cos_1, 0], [0, 0, 1]])
         .double()
@@ -69,6 +100,7 @@ def main(args):
     sin_2 = forwards[i][2] / (
         ((forwards[i][0] ** 2 + forwards[i][1] ** 2) + forwards[i][2] ** 2) ** (0.5)
     )
+    # Inverse: cos sin -sin cos
     xyz = torch.matmul(
         torch.tensor([[cos_2, 0, -sin_2], [0, 1, 0], [sin_2, 0, cos_2]])
         .double()
