@@ -626,10 +626,11 @@ def csv_output(verbose, pointsvectors, observer_height, lasname, outpath):
     outpath = ROOT2 / "examples/Trajectory";
     
     # New output directory, create directory and gitignore
-    outfolder_name = lasname; # GET THE ROAD SECTION NAME HERE!!!!!
+    outfolder_name = os.path.splitext(lasname)[0]; # Road section name here is passed from shell script
 
     outpath = outpath / outfolder_name;
-    os.makedirs(outpath);
+    if not os.path.exists(outpath):
+      os.makedirs(outpath);
 
   # Compute our observer points from our road points (in the perspective of the vehicle)
   road_points = pointsvectors[0];
@@ -655,8 +656,8 @@ def csv_output(verbose, pointsvectors, observer_height, lasname, outpath):
     print("Writing took %.2fs." % (tStop-tStart));
 
   print(
-    "Trajectory vectors have been successfully written to {}"
-    .format(outpath / "*.csv")
+    "Trajectory vectors for {} points have been successfully written to {}.\n"
+    .format(pointsvectors[0].shape[0], outpath / "*.csv")
     );
 
   return;

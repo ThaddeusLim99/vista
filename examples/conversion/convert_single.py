@@ -24,19 +24,22 @@ def main(args):
     las = laspy.read(args.input)
     # las_offsets = las.header.offsets
     
-    filename_cut = os.path.basename(args.input) # Converted outputs are for a specific road section
-    
+    filename_cut = os.path.splitext(os.path.basename(args.input))[0] # Converted outputs are for a specific road section
+
     # Manually input pregenerated trajectories (for now)
     if usePregenerated:
-      path_road_points = "./examples/Trajectory/" / filename_cut / "road_points.csv"
+
+      path_road_points = os.path.join("./examples/Trajectory", filename_cut, "road_points.csv")
       road_points = pd.read_csv(
           path_road_points, sep=",", header=None
       ).values
-      path_forwards = "./examples/Trajectory/" / filename_cut / "forwards.csv"
+
+      path_forwards = os.path.join("./examples/Trajectory", filename_cut, "forwards.csv")
       forwards = pd.read_csv(
-          path_forwards sep=",", header=None
+          path_forwards, sep=",", header=None
       ).values
-      path_leftwards = "./examples/Trajectory/" / filename_cut / "leftwards.csv"
+
+      path_leftwards = os.path.join("./examples/Trajectory", filename_cut, "leftwards.csv")
       leftwards = pd.read_csv(
           path_leftwards, sep=",", header=None
       ).values

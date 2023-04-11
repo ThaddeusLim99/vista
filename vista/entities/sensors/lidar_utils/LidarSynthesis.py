@@ -51,7 +51,8 @@ class LidarSynthesis:
         downsample: bool = False,
         **kwargs,
     ):
-        self.roadsection_filename = kwargs["roadsection_filename"] # Way to pass the filename from shell script
+        # Filename passed from the shell script
+        self.roadsection_filename = os.path.splitext(kwargs["roadsection_filename"])[0]
         self._frame = frame
         self._downsample = downsample
 
@@ -238,7 +239,12 @@ class LidarSynthesis:
 
 
             #outpath = f"./examples/vista_traces/lidar_output/output_{self._frame}_{self._res[0]: .2f}.txt"
-            outpath = f"./examples/vista_traces/lidar_output/{self.roadsection_filename}/output_{self._frame}_{self._res[0]: .2f}.txt"
+            outfilepath = f"./examples/vista_traces/lidar_output/{self.roadsection_filename}_resolution={self._res[0]:.2f}"
+            if not os.path.exists(outfilepath):
+                os.makedirs(outfilepath)
+
+            outpath = os.path.join(outfilepath, f"output_{self._frame}_{self._res[0]:.2f}.txt")
+
             outpath = "".join(outpath.split(" "))
             df.to_csv(
                 outpath,
