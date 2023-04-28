@@ -66,8 +66,9 @@ def main(args):
 
     # Fix the z component of the forwards vector
     forwards[i][2] = (
-        upwards[i][0] * forwards[i][0] + upwards[i][1] * forwards[i][1]
-    ) / upwards[i][2]
+        -(upwards[i][0] * forwards[i][0] + upwards[i][1] * forwards[i][1])
+        / upwards[i][2]
+    )
     magnitude = (forwards[i][0] ** 2 + forwards[i][1] ** 2 + forwards[i][2] ** 2) ** (
         1 / 2
     )
