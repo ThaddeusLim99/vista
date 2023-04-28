@@ -13,55 +13,65 @@ from LasPointCloud import LasPointCloud
 
 
 def main(args):
-    
     # Use this if you want to manually generate a trajectory for each process
     # It may be faster to use a pregenerated trajectory
-    usePregenerated = True;
-    
+    usePregenerated = True
+
     device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
     print(device)
 
     las = laspy.read(args.input)
     # las_offsets = las.header.offsets
-    
-    filename_cut = os.path.splitext(os.path.basename(args.input))[0] # Converted outputs are for a specific road section
+
+    filename_cut = os.path.splitext(os.path.basename(args.input))[
+        0
+    ]  # Converted outputs are for a specific road section
 
     # Manually input pregenerated trajectories (for now)
     if usePregenerated:
+        path_road_points = os.path.join(
+            "./examples/Trajectory", filename_cut, "road_points.csv"
+        )
+        road_points = pd.read_csv(path_road_points, sep=",", header=None).values
 
-      path_road_points = os.path.join("./examples/Trajectory", filename_cut, "road_points.csv")
-      road_points = pd.read_csv(
-          path_road_points, sep=",", header=None
-      ).values
+        path_upwards = os.path.join(
+            "./examples/Trajectory", filename_cut, "upwards.csv"
+        )
+        upwards = pd.read_csv(path_upwards, sep=",", header=None).values
 
-      path_forwards = os.path.join("./examples/Trajectory", filename_cut, "forwards.csv")
-      forwards = pd.read_csv(
-          path_forwards, sep=",", header=None
-      ).values
+        path_forwards = os.path.join(
+            "./examples/Trajectory", filename_cut, "forwards.csv"
+        )
+        forwards = pd.read_csv(path_forwards, sep=",", header=None).values
 
-      path_leftwards = os.path.join("./examples/Trajectory", filename_cut, "leftwards.csv")
-      leftwards = pd.read_csv(
-          path_leftwards, sep=",", header=None
-      ).values
+        path_leftwards = os.path.join(
+            "./examples/Trajectory", filename_cut, "leftwards.csv"
+        )
+        leftwards = pd.read_csv(path_leftwards, sep=",", header=None).values
     else:
+        # Generate our trajectories as we go
+        las_struct = LasPointCloud(
+            las.x, las.y, las.z, las.gps_time, las.scan_angle_rank, las.point_source_id
+        )
 
-      # Generate our trajectories as we go
-      las_struct = LasPointCloud(
-        las.x, 
-        las.y, 
-        las.z, 
-        las.gps_time, 
-        las.scan_angle_rank, 
-        las.point_source_id
-      )
+        traj = gen_traj.TrajectoryConfig(2.0, 1.0)
 
-      traj = gen_traj.TrajectoryConfig(2.0, 1.0)
-
-      road_points, forwards, leftwards, upwards = gen_traj.generate_trajectory(True, las_struct, traj)
+        road_points, forwards, leftwards, upwards = gen_traj.generate_trajectory(
+            True, las_struct, traj
+        )
 
     trajectory = road_points
     i = args.frame
     print(f"Frame #: {i}")
+
+    # Fix the z component of the forwards vector
+    forwards[i][2] = (
+        upwards[i][0] * forwards[i][0] + upwards[i][1] * forwards[i][1]
+    ) / upwards[i][2]
+    magnitude = (forwards[i][0] ** 2 + forwards[i][1] ** 2 + forwards[i][2] ** 2) ** (
+        1 / 2
+    )
+    forwards /= magnitude
 
     # Local coordinates in mm
     pov_X = (trajectory[i][0]) * 1000
@@ -75,7 +85,7 @@ def main(args):
     xyz = np.asarray([x, y, z], dtype=np.float64).T
 
     # Traslantion
-    xyz -= np.array([pov_X, pov_Y, pov_Z]) # Inverse: Add the pov.
+    xyz -= np.array([pov_X, pov_Y, pov_Z])  # Inverse: Add the pov.
 
     xyz_distance = np.sqrt(
         np.square(xyz[:, 0]) + np.square(xyz[:, 1]) + np.square(xyz[:, 2])
@@ -84,6 +94,10 @@ def main(args):
     # mm distance less than the FOV
     indices = np.where((xyz_distance < args.range * 1000))
     xyz = torch.tensor(xyz[indices]).to(device)
+
+    pd.DataFrame((xyz.cpu().numpy() + np.array([pov_X, pov_Y, pov_Z])) / 1000).to_csv(
+        f"./examples/vista_traces/lidar_3d.csv"
+    )
 
     # Rotation 1
     cos_1 = forwards[i][0] / ((forwards[i][0] ** 2 + forwards[i][1] ** 2) ** (0.5))
@@ -124,8 +138,11 @@ def main(args):
     ).T
 
     # Sensor at 1.2 meter above
-    xyz[:, 2] -= 1200
+    # xyz[:, 2] -= 1800
     xyz = xyz.cpu().numpy()
+    pd.DataFrame(xyz).to_csv(
+        f"./examples/vista_traces/lidar_3d.csv", header=False, index=False
+    )
 
     with h5py.File(
         f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
