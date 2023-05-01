@@ -43,15 +43,19 @@ class TrajectoryConfig:
     object if you are using the trajectory generator from a different file.
     """
 
-    def __init__(self, floor_box_edge, point_density):
+    def __init__(self, floor_box_edge, point_density, observer_height):
         self.floor_box_edge = floor_box_edge
         self.point_density = point_density
+        self.observer_height = observer_height
 
     def getFloorBoxEdge(self):
         return self.floor_box_edge
 
     def getPointDensity(self):
         return self.point_density
+    
+    def getObserverHeight(self):
+        return self.observer_height
 
     pass
 
@@ -74,6 +78,10 @@ class RoadPath(LasPointCloud):
 
     pass
 
+
+class FilteredRoadPath:
+    def __init__(self, filtered_raw_road_path):
+        self.filtered_raw_road_path = filtered_raw_road_path
 
 # Converted from camera_path_magic.m
 def generate_trajectory(verbose, las_obj, traj):
@@ -120,7 +128,6 @@ def generate_trajectory(verbose, las_obj, traj):
     # Filter out the points that have a scan angle rank of zero, these
     # will be the points that are below the vehicle taht make our path.
     below_idxs = np.where(las_obj.getScanAngleRank() == 0)
-    # FIXME The forward vectors are incorrect for the pose orientation.
 
     raw_road_path = RoadPath(
         las_obj.getX()[below_idxs],
@@ -158,20 +165,110 @@ def generate_trajectory(verbose, las_obj, traj):
         # Finally save the split road path
         split_raw_road_path[scanner_id] = temp_road_path
 
+
+    def check_remove_outliers(
+            window: np.array, 
+            mean: np.float32, 
+            sdev: np.float32, 
+            window_base_index: int, 
+            window_size: int, 
+            raw_road_path: np.ndarray
+            ) -> np.ndarray | None:
+        
+        """Helper function to remove the outliers from a window of z-coordinates.
+        Outliers from the window are recursively removed until the window does not
+        contain outliers.
+
+        Args: 
+            window (np.array): Our window of the given points.
+            mean (np.float32): The rolling mean of the last known 'good' window with outliers removed.
+            sdev (np.float32): The standard deviation of the window.
+            window_base_index (int): The location of the window's first index relative to the whole road path.
+            window_size (int): Size of the window used to calculate the moving average.
+            raw_road_path (np.ndarray): Our raw road path, with the outliers within our window removed.
+        """
+        
+        outlier_indices = ((window - mean) > traj.getObserverHeight()).nonzero()[0]
+
+        # There are no outliers in this window, we can slide the window forward by one in the main program
+        if outlier_indices.shape[0] == 0:
+            return raw_road_path
+        
+        # Remove outlier road points
+        raw_road_path = np.delete(raw_road_path, outlier_indices+window_base_index, axis=0)
+
+        
+        # Now that we have removed the outlier values, we need to fill our window with values
+        # until there are no more outliers left, using recursion
+        return check_remove_outliers(
+                                     window=raw_road_path[:,2][window_base_index:window_base_index+window_size], 
+                                     mean=mean, 
+                                     sdev=sdev, 
+                                     window_base_index=window_base_index, 
+                                     window_size=window_size, 
+                                     raw_road_path=raw_road_path
+                                     )
+        
+
+    ## Correct overhead interference
+    # Given our raw road path as points that are of 0 scan angle rank,
+    # we will slide a window of 5 points based on the z-coordinates of the road path, and check
+    # if any of the points within the window are outliers.
+
+    # Here, we will define outliers to be any raw road path point that is observer_height or more meters 
+    # above the mean of the past window. This is under the assumption that the initial road path has good
+    # data (i.e. there is no overhead interference at the start of the road section).
+
+    filtered_raw_road_path = split_raw_road_path
+    filter_window_size = 5
+
+    for scanner_id in scanners:
+
+        # Get initial window, mean, and stdev
+        i = 0
+        window = split_raw_road_path[scanner_id][:,2][0:filter_window_size]
+        mean = np.average(window)
+        sdev = np.std(window)
+      
+        # Slide our window through the road path
+        while i+filter_window_size < filtered_raw_road_path[scanner_id].shape[0]:
+
+            # Check and recursively remove outliers from our window
+            filtered_raw_road_path[scanner_id] = check_remove_outliers(
+                window=window, 
+                mean=mean,
+                sdev=sdev, 
+                window_base_index=i, 
+                window_size=filter_window_size, 
+                raw_road_path=filtered_raw_road_path[scanner_id]
+            )
+
+            # Obtain moving window, average, and mean from the processed window
+            window = filtered_raw_road_path[scanner_id][:,2][i:i+filter_window_size]
+            mean = np.average(window)
+            sdev = np.std(window)            
+
+            i+=1 # Slide our window forward by one
+
+            pass
+
+        pass
+
+
     ### Create a smooth path (road points) which has a notion of distance
     # Obtain the scanner id and times with the highest sensor sample rate
     # (highest point count)
-    id_max = max(split_raw_road_path, key=lambda k: split_raw_road_path.get(k).shape[0])
-    resample_times = split_raw_road_path[id_max][:, 3]
-    num_resample_points = split_raw_road_path[id_max].shape[0]
+    id_max = max(filtered_raw_road_path, key=lambda k: filtered_raw_road_path.get(k).shape[0])
+    resample_times = filtered_raw_road_path[id_max][:, 3]
+    num_resample_points = filtered_raw_road_path[id_max].shape[0]
 
     # Start smoothing our points for each scanner, and add road points together
     # We will vectorize the computation of our smoothed points
     road_points = np.zeros((num_resample_points, 3), dtype=float)
 
     for scanner_id in scanners:
-        raw_times = split_raw_road_path[scanner_id][:, 3]
-        points = split_raw_road_path[scanner_id][:, 0:3]
+        raw_times = filtered_raw_road_path[scanner_id][:, 3]
+        points = filtered_raw_road_path[scanner_id][:, 0:3]
 
         # Resample and smooth our points
         road_points += smoothing(
@@ -340,23 +437,6 @@ def generate_trajectory(verbose, las_obj, traj):
             # This should be unlikely though.
             print("Not enough points at road point {}".format(i))
             upwards[i, :] = np.asarray([0, 0, 1])
-
-        """
-    # Visualize slices: temporary!
-    #np.savetxt(f"slices/slice_{i}.txt", nearby_points, delimiter=',');
-    if i in range(1540, 1650):
-
-      if nearby_points.shape[0] != 0:
-        fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
-        ax.scatter(nearby_points[:,0], nearby_points[:,1], nearby_points[:,2])
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-        ax.set_title(f"Slice {i}")
-      
-      plt.show()
-    """
 
     # Some planes from affine_fit may have a downward pointing normal, which still counts.
     upwards = np.multiply(
@@ -649,7 +729,7 @@ def config_trajectory(verbose, args, promptuser):
                 )
             )
 
-        traj = TrajectoryConfig(args.floor_box_edge, args.point_density)
+        traj = TrajectoryConfig(args.floor_box_edge, args.point_density, args.observer_height)
 
     return traj
 
