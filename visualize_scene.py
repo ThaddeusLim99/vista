@@ -164,9 +164,15 @@ def main() -> None:
   usrinput = None
   while(usrinput != 'q'):
     
-    usrinput = input(f"Enter the scene number (0 - {roadpoints.shape[0]}) (type 'q' to quit): ")
+    usrinput = input(f"Enter the scene number (0 - {roadpoints.shape[0]}) (type 'q' to quit, type 'z' to change UTM zone ({utm_zone} right now)): ")
     if usrinput == "q":
       break
+    elif usrinput == "z":
+        utm_zone = int(input(f"Enter the corresponding UTM zone: "))
+        continue
+    else:
+        print("Invalid input, try again!")
+        continue
     
     visualize_scene(roadpoints, forwardvecs, utm_zone, int(usrinput))
   
