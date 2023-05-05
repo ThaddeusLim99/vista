@@ -79,10 +79,6 @@ class RoadPath(LasPointCloud):
     pass
 
 
-class FilteredRoadPath:
-    def __init__(self, filtered_raw_road_path):
-        self.filtered_raw_road_path = filtered_raw_road_path
-
 # Converted from camera_path_magic.m
 def generate_trajectory(verbose, las_obj, traj):
     """
@@ -199,7 +195,7 @@ def generate_trajectory(verbose, las_obj, traj):
 
         
         # Now that we have removed the outlier values, we need to fill our window with values
-        # until there are no more outliers left, using recursion
+        # while retaining order until there are no outliers in the window, using recursion
         return check_remove_outliers(
                                      window=raw_road_path[:,2][window_base_index:window_base_index+window_size], 
                                      mean=mean, 

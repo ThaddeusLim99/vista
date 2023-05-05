@@ -54,7 +54,7 @@ def main(args):
             las.x, las.y, las.z, las.gps_time, las.scan_angle_rank, las.point_source_id
         )
 
-        traj = gen_traj.TrajectoryConfig(2.0, 1.0)
+        traj = gen_traj.TrajectoryConfig(2.0, 1.0, 1.8)
 
         road_points, forwards, leftwards, upwards = gen_traj.generate_trajectory(
             True, las_struct, traj
@@ -96,9 +96,10 @@ def main(args):
     indices = np.where((xyz_distance < args.range * 1000))
     xyz = torch.tensor(xyz[indices]).to(device)
 
-    pd.DataFrame((xyz.cpu().numpy() + np.array([pov_X, pov_Y, pov_Z])) / 1000).to_csv(
-        f"./examples/vista_traces/lidar_3d.csv"
-    )
+    # Debug: Write segmented point cloud in global coordinates
+    #pd.DataFrame((xyz.cpu().numpy() + np.array([pov_X, pov_Y, pov_Z])) / 1000).to_csv(
+    #    f"./examples/vista_traces/lidar_3d.csv", header=False, index=False
+    #)
 
     # Rotation 1
     cos_1 = forwards[i][0] / ((forwards[i][0] ** 2 + forwards[i][1] ** 2) ** (0.5))
@@ -139,11 +140,12 @@ def main(args):
     ).T
 
     # Sensor at 1.2 meter above
-    # xyz[:, 2] -= 1800
+    xyz[:, 2] -= 1800
     xyz = xyz.cpu().numpy()
-    pd.DataFrame(xyz).to_csv(
-        f"./examples/vista_traces/lidar_3d.csv", header=False, index=False
-    )
+    # Debug: write segmented point cloud in local coordinates
+    #pd.DataFrame(xyz).to_csv(
+    #    f"./examples/vista_traces/lidar_3d.csv", header=False, index=False
+    #)
 
     with h5py.File(
         f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
