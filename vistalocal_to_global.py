@@ -234,9 +234,8 @@ def transform_scene(
         os.makedirs(outpath)
 
     # Get name of output
-    filename = f"output_{frame}_{sensor_res:.2f}_local"
+    filename = f"output_{frame}_{sensor_res:.2f}_local.txt"
     outpath_file = os.path.join(outpath, filename)
-    outpath_file = "".join(outpath.split(" "))
 
     df.to_csv(outpath_file, index=False)
 
@@ -266,7 +265,7 @@ def main() -> None:
 
     # Loop to convert for each frame goes here
     # Could be parallelized?
-    useParallel = False
+    useParallel = True
     sensor_res = 0.11
 
     if useParallel:
