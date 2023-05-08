@@ -1,11 +1,13 @@
 import numpy as np
 import pandas as pd
 import torch
+import sys
 import os
 import math
 import argparse
 import torch.multiprocessing as mp  # Experimental
 from tqdm import tqdm
+from pathlib import Path
 
 import trajectory_tools
 
@@ -76,10 +78,34 @@ and then apply inverse of the translations mentioned above, in reverse order.
 
 """
 
+# Global variables for file I/O
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]  # Root directory
+ROOT2 = Path(__file__).parent.resolve()
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
+
 
 def transform_scene(
-    frame: int, path: str, trajectory: trajectory_tools.Trajectory, device: str
-) -> np.ndarray:
+    frame: int, path: str, trajectory: trajectory_tools.Trajectory, device: str, sensor_res: float = 0.11
+) -> None:
+    """Transforms an individual Vista scene from local coordinates (in mm) to
+    global coordinates (in UTM, meters)
+
+    Outputs will be written as so.
+
+    Args:
+        frame (int): The frame of the specific Vista scene.
+        path (str): The path to the folder containing the Vista scenes.
+        trajectory (trajectory_tools.Trajectory): The container class for our respective
+        trajectory.
+        device (str): The device at which we will handle tensors with
+        (cuda:0 if we are using CUDA), (cpu:0 if we are using CPU)
+        sensor_res (float): The resolution of the sensor. Hardcoded into the function
+        defnition for now, need to parse from the sensor configuration later.
+
+    """
     # Transform our scene from local coordinates back to global coordinates
 
     ## Order to convert from global to local:
@@ -99,29 +125,35 @@ def transform_scene(
     # CONVERT OUR XYZ FROM A CUDA TENSOR INTO NUMPY ARRAY
     # (xyz=xyz.cpu().numpy())
 
-    def open_vista_scene(frame: int, path: str) -> np.ndarray:
-        """
-        Vista scenes are given in comma separated values
-        x,y,z,yaw,pitch,depth...
-        """
 
-        sensor_res = 0.11  # Temporary, need to parse from commandline arguments...
+    def open_vista_scene(frame: int, path: str) -> np.ndarray:
+        """Opens a singular Vista scene as a numpy array.
+        Each scene is given in XYZ points, and in mm.
+
+        Args:
+            frame (int): The number of the scene that we want to open.
+            path (str): Path to the Vista output folder.
+
+        Returns:
+            scene (np.ndarray): The points that make up the scene at a specific
+            frame, given in XYZ local (in mm).
+        """
 
         filename = f"output_{frame}_{sensor_res}.txt"
         path = os.path.join(path, filename)
-        scene = pd.read_csv(path, skiprows=0).to_numpy()
+        scene = pd.read_csv(path, skiprows=0).to_numpy()  # Skip the header row
 
         # Remove the corresponding spherical coordinates in our Vista output
         scene = np.delete(scene, [3, 4, 5], axis=1)
 
         return scene
 
-    # XYZ of Vista scene in local coordinates
+    # XYZ of Vista scene in local coordinates (mm)
     xyz = open_vista_scene(frame, path)
     # Convert our scene from numpy array to a CUDA tensor
     xyz = torch.tensor(xyz).to(device)
 
-    # Prepare trajectoru data for our transformation
+    # Prepare our trajectory data for the transformation
     traj = trajectory.getRoadPoints()
     pov_X = (traj[frame][0]) * 1000
     pov_Y = (traj[frame][1]) * 1000
@@ -133,10 +165,12 @@ def transform_scene(
 
     ### INVERSE OF THE CONVERT_SINGLE PROCESS BEGINS HERE ###
     # Undo observer height translation
-    xyz[:,2] += 1800
-    
+    xyz[:, 2] += 1800
+
     # Undo rotation 3
-    tangent = leftwards[frame][2] / ((leftwards[frame][0] ** 2 + leftwards[frame][1] ** 2) ** (0.5))
+    tangent = leftwards[frame][2] / (
+        (leftwards[frame][0] ** 2 + leftwards[frame][1] ** 2) ** (0.5)
+    )
     cross_angle = math.atan(tangent)
     cos_3 = math.cos(cross_angle)
     sin_3 = math.sin(cross_angle)
@@ -147,13 +181,15 @@ def transform_scene(
         .to(device),
         xyz.double().T,
     ).T
-    
+
     # Undo rotation 2
     cos_2 = ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5)) / (
-        ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) + forwards[frame][2] ** 2) ** (0.5)
+        ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) + forwards[frame][2] ** 2)
+        ** (0.5)
     )
     sin_2 = forwards[frame][2] / (
-        ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) + forwards[frame][2] ** 2) ** (0.5)
+        ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) + forwards[frame][2] ** 2)
+        ** (0.5)
     )
 
     xyz = torch.matmul(
@@ -164,8 +200,12 @@ def transform_scene(
     ).T
 
     # Undo rotation 1
-    cos_1 = forwards[frame][0] / ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5))
-    sin_1 = forwards[frame][1] / ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5))
+    cos_1 = forwards[frame][0] / (
+        (forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5)
+    )
+    sin_1 = forwards[frame][1] / (
+        (forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5)
+    )
 
     xyz = torch.matmul(
         torch.tensor([[cos_1, -sin_1, 0], [sin_1, cos_1, 0], [0, 0, 1]])
@@ -173,28 +213,41 @@ def transform_scene(
         .to(device),
         xyz.double().T,
     ).T
-    
+
     # Undo conversion of our xyz points from a numpy array to a CUDA tensor
     xyz = xyz.cpu().numpy()
-    
+
     # Undo translation
-    xyz += np.array([pov_X, pov_Y, pov_Z])  # Inverse: Add the pov.
-    
+    xyz += np.array([pov_X, pov_Y, pov_Z])
+
     # Undo conversion from m to mm (convert our xyz back to meters)
     xyz /= 1000
-    
-    print(f"frame {frame}")
 
+    # Now that we have our XYZ coordinates in global (m),
+    # we can now write the output to a csv file.
+    df = pd.DataFrame(xyz)
+    df.columns = ["x", "y", "z"]
 
-    return xyz
+    # Get path to output
+    outpath = f"{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path)}_res={sensor_res:.2f}_local"
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
 
+    # Get name of output
+    filename = f"output_{frame}_{sensor_res:.2f}_local"
+    outpath_file = os.path.join(outpath, filename)
+    outpath_file = "".join(outpath.split(" "))
 
-def main():
+    df.to_csv(outpath_file, index=False)
+
+    return
+
+def main() -> None:
     traj_args = trajectory_tools.parse_cmdline_args()
     trajectory = trajectory_tools.obtain_trajectory_details(traj_args)
     path_to_scenes = trajectory_tools.obtain_scene_path(traj_args)
 
-    # Sanity check
+    # Sanity check: Make sure that the number of Vista scenes equal the trajectory datapoints
     num_traj_points = trajectory.getRoadPoints().shape[0]
     num_scenes = len(
         [
@@ -206,39 +259,61 @@ def main():
 
     assert (
         num_traj_points == num_scenes
-    ), f"The number of trajectory values does not equal the number of Vista scenes!"
+    ), f"The number of trajectory data points does not equal the number of Vista scenes!"
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
     print(f"\nUsing device {device} for the conversion...")
 
     # Loop to convert for each frame goes here
     # Could be parallelized?
+    useParallel = False
+    sensor_res = 0.11
 
-    # parallelization thing, we are going to have to see if it works
-    mp.freeze_support()
-    cores = mp.cpu_count()-1
-    try:
-        mp.set_start_method('spawn')
-    except RuntimeError:
-        pass
-    
-    print(f"Opening pool with {cores} cores...")
-    with mp.Pool(cores) as p:  # Opening up more process pools
-      # Running parallelization with starmap for significant speed increase.
-      buffer_list = p.starmap(transform_scene,
-                              tqdm(
-                                [
-                                  (
-                                    frame, path_to_scenes, trajectory, device
-                                  ) for frame in range(num_scenes)
-                                ],
-                                    total=num_scenes))
-      p.close();
-      p.join();
-      print('Completed the processing, closing pools');
-      
-    
+    if useParallel:
+        mp.freeze_support()
+        cores = mp.cpu_count() - 1
 
+        try:
+            mp.set_start_method("spawn") # For CUDA; tensors are placed onto GPU memory
+        except RuntimeError:
+            pass
+
+        # Parallelization thing, we are going to have to see if it works...?
+        # Hopefully using CUDA with a parallel for loop won't freeze anythong
+        print(f"Converting {num_scenes} scenes using parallel pool with {cores} cores...")
+        with mp.Pool(cores) as p:  # Opening up more process pools
+            p.starmap(
+                transform_scene,
+                tqdm(
+                    [
+                        (frame, path_to_scenes, trajectory, device, sensor_res)
+                        for frame in range(num_scenes)
+                    ],
+                    total=num_scenes,
+                ),
+            )
+            p.close() # No new tasks for our pool
+            p.join()  # Wait for all processes to finish
+            
+    else:
+        # Very slow???
+        for frame in tqdm(range(num_scenes)):
+            transform_scene(
+                frame=frame, path=path_to_scenes, trajectory=trajectory, device=device, sensor_res=sensor_res
+            )
+    
+    
+    outpath = f".{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path_to_scenes)}_res={sensor_res:.2f}_local"
+    num_converted_scenes = len(
+        [
+            name
+            for name in os.listdir(outpath)
+            if os.path.isfile(os.path.join(outpath, name))
+        ]
+    )
+    
+    print(f"Processing complete.\n{num_converted_scenes} scenes were converted to local coordinates and are written to \n{outpath}")
+    
     return
 
 
