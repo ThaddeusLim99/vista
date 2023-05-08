@@ -164,13 +164,13 @@ def main() -> None:
   usrinput = None
   while(usrinput != 'q'):
     
-    usrinput = input(f"Enter the scene number (0 - {roadpoints.shape[0]}) (type 'q' to quit, type 'z' to change UTM zone ({utm_zone} right now)): ")
+    usrinput = input(f"\nEnter the scene number (0 - {roadpoints.shape[0]-1}) (type 'q' to quit, type 'z' to change UTM zone ({utm_zone} right now)): ")
     if usrinput == "q":
       break
     elif usrinput == "z":
         utm_zone = int(input(f"Enter the corresponding UTM zone: "))
         continue
-    else:
+    elif ((not usrinput.isdigit()) or (int(usrinput) > roadpoints.shape[0]-1) ):
         print("Invalid input, try again!")
         continue
     

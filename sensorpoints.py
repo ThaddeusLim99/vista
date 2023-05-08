@@ -17,7 +17,7 @@ Eric Cheng
 2023-05-04
 Generate sensor points and write to a las file for visualization
 at a specific road point, given a trajectory.
-Based off of the code by JM, and ZP, but with Python.
+Based off of the code by JM, and ZP, but with Python for OS compatibility.
 '''
 
 # Global variables for file I/O
@@ -67,6 +67,8 @@ class SensorConfig:
   def getRHigh(self):
     return self.r_high
 
+#TODO Obtain the trajectory using trajectory_tools.py instead of locally
+# defining the functions
 class Trajectory:
   """Container class for the trajectory. 
   """
