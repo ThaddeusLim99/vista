@@ -167,7 +167,7 @@ def transform_scene(
     # Undo observer height translation
     xyz[:, 2] += 1800
 
-    # Undo rotation 3
+    # Undo rotation 3 (along x-axis, to CCW)
     tangent = leftwards[frame][2] / (
         (leftwards[frame][0] ** 2 + leftwards[frame][1] ** 2) ** (0.5)
     )
@@ -182,7 +182,7 @@ def transform_scene(
         xyz.double().T,
     ).T
 
-    # Undo rotation 2
+    # Undo rotation 2 (along y-axis, to CW)
     cos_2 = ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5)) / (
         ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) + forwards[frame][2] ** 2)
         ** (0.5)
@@ -199,7 +199,7 @@ def transform_scene(
         xyz.double().T,
     ).T
 
-    # Undo rotation 1
+    # Undo rotation 1 (along z-axis, to CW)
     cos_1 = forwards[frame][0] / (
         (forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5)
     )
