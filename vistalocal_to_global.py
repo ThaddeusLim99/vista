@@ -88,7 +88,11 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 
 def transform_scene(
-    frame: int, path: str, trajectory: trajectory_tools.Trajectory, device: str, sensor_res: float = 0.11
+    frame: int,
+    path: str,
+    trajectory: trajectory_tools.Trajectory,
+    device: str,
+    sensor_res: float = 0.11,
 ) -> None:
     """Transforms an individual Vista scene from local coordinates (in mm) to
     global coordinates (in UTM, meters)
@@ -124,7 +128,6 @@ def transform_scene(
     # Translate sensor down by observer height in mm
     # CONVERT OUR XYZ FROM A CUDA TENSOR INTO NUMPY ARRAY
     # (xyz=xyz.cpu().numpy())
-
 
     def open_vista_scene(frame: int, path: str) -> np.ndarray:
         """Opens a singular Vista scene as a numpy array.
@@ -162,10 +165,10 @@ def transform_scene(
     upwards = trajectory.getUpwards()
 
     ### INVERSE OF THE CONVERT_SINGLE PROCESS BEGINS HERE ###
-    
+
     # Convert our scene from a numpy array to a CUDA tensor
     xyz = torch.tensor(xyz).to(device)
-    
+
     # Undo observer height translation
     xyz[:, 2] += 1800
 
@@ -201,7 +204,7 @@ def transform_scene(
         xyz.double().T,
     ).T
 
-    # Undo rotation 1 (along z-axis, to CW)
+    # Undo rotation 1 (along z-axis, to CW) FIXME The converted scenes are oriented in the wrong way (rotate CCW by 90 degrees)
     cos_1 = forwards[frame][0] / (
         (forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5)
     )
@@ -225,23 +228,26 @@ def transform_scene(
     # Undo conversion from m to mm (convert our xyz back to meters)
     xyz /= 1000
 
+    """
     # Now that we have our XYZ coordinates in global (m),
     # we can now write the output to a csv file.
     df = pd.DataFrame(xyz)
     df.columns = ["x", "y", "z"]
 
     # Get our path to the output folder
-    outpath = f"{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path)}_res={sensor_res:.2f}_global"
+    outpath = f"{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path)}_global"
     if not os.path.exists(outpath):
         os.makedirs(outpath)
 
     # Get name of output file
-    filename = f"output_{frame}_{sensor_res:.2f}_global.txt"
+    filename = f"output_{frame}_{sensor_res:.2f}_global.csv"
     outpath_file = os.path.join(outpath, filename)
 
     df.to_csv(outpath_file, index=False)
+    """
 
-    return
+    return xyz
+
 
 def main() -> None:
     traj_args = trajectory_tools.parse_cmdline_args()
@@ -275,15 +281,17 @@ def main() -> None:
         cores = mp.cpu_count() - 1
 
         try:
-            mp.set_start_method("spawn") # For CUDA; tensors are placed onto GPU memory
+            mp.set_start_method("spawn")  # For CUDA; tensors are placed onto GPU memory
         except RuntimeError:
             pass
 
         # Parallelization thing, we are going to have to see if it works...?
         # Hopefully using CUDA with a parallel for loop won't freeze anythong
-        print(f"Converting {num_scenes} scenes using parallel pool with {cores} cores...")
+        print(
+            f"Converting {num_scenes} scenes using parallel pool with {cores} cores..."
+        )
         with mp.Pool(cores) as p:  # Opening up more process pools
-            p.starmap(
+            scenes_list = p.starmap(
                 transform_scene,
                 tqdm(
                     [
@@ -293,18 +301,38 @@ def main() -> None:
                     total=num_scenes,
                 ),
             )
-            p.close() # No new tasks for our pool
+            p.close()  # No new tasks for our pool
             p.join()  # Wait for all processes to finish
-            
+
     else:
         # Very slow???
         for frame in tqdm(range(num_scenes)):
             transform_scene(
-                frame=frame, path=path_to_scenes, trajectory=trajectory, device=device, sensor_res=sensor_res
+                frame=frame,
+                path=path_to_scenes,
+                trajectory=trajectory,
+                device=device,
+                sensor_res=sensor_res,
             )
-    
+
+    # Get our path to the output folder
+    outpath = f"{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path_to_scenes)}_global"
+    if not os.path.exists(outpath):
+        os.makedirs(outpath)
+        
+    for scene in tqdm(scenes_list):
+        # Now that we have our XYZ coordinates in global (m),
+        # we can now write the output to a csv file.
+        df = pd.DataFrame(scene)
+        df.columns = ["x", "y", "z"]
+
+        # Get name of output file
+        filename = f"output_{frame}_{sensor_res:.2f}_global.csv"
+        outpath_file = os.path.join(outpath, filename)
+
+        df.to_csv(outpath_file, index=False)
+        
     # Another sanity check
-    outpath = f".{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path_to_scenes)}_res={sensor_res:.2f}_global"
     num_converted_scenes = len(
         [
             name
@@ -312,9 +340,11 @@ def main() -> None:
             if os.path.isfile(os.path.join(outpath, name))
         ]
     )
-    
-    print(f"Processing complete.\n{num_converted_scenes} scenes were converted to global coordinates and are written to \n{outpath}")
-    
+
+    print(
+        f"Processing complete.\n{num_converted_scenes} scenes were converted to global coordinates and are written to \n{outpath}"
+    )
+
     return
 
 
