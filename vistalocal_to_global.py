@@ -148,10 +148,8 @@ def transform_scene(
 
         return scene
 
-    # XYZ of Vista scene in local coordinates (mm)
+    # Prepare our points for the transformation
     xyz = open_vista_scene(frame, path)
-    # Convert our scene from numpy array to a CUDA tensor
-    xyz = torch.tensor(xyz).to(device)
 
     # Prepare our trajectory data for the transformation
     traj = trajectory.getRoadPoints()
@@ -164,6 +162,10 @@ def transform_scene(
     upwards = trajectory.getUpwards()
 
     ### INVERSE OF THE CONVERT_SINGLE PROCESS BEGINS HERE ###
+    
+    # Convert our scene from a numpy array to a CUDA tensor
+    xyz = torch.tensor(xyz).to(device)
+    
     # Undo observer height translation
     xyz[:, 2] += 1800
 
@@ -228,13 +230,13 @@ def transform_scene(
     df = pd.DataFrame(xyz)
     df.columns = ["x", "y", "z"]
 
-    # Get path to output
-    outpath = f"{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path)}_res={sensor_res:.2f}_local"
+    # Get our path to the output folder
+    outpath = f"{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path)}_res={sensor_res:.2f}_global"
     if not os.path.exists(outpath):
         os.makedirs(outpath)
 
-    # Get name of output
-    filename = f"output_{frame}_{sensor_res:.2f}_local.txt"
+    # Get name of output file
+    filename = f"output_{frame}_{sensor_res:.2f}_global.txt"
     outpath_file = os.path.join(outpath, filename)
 
     df.to_csv(outpath_file, index=False)
@@ -301,8 +303,8 @@ def main() -> None:
                 frame=frame, path=path_to_scenes, trajectory=trajectory, device=device, sensor_res=sensor_res
             )
     
-    
-    outpath = f".{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path_to_scenes)}_res={sensor_res:.2f}_local"
+    # Another sanity check
+    outpath = f".{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path_to_scenes)}_res={sensor_res:.2f}_global"
     num_converted_scenes = len(
         [
             name
@@ -311,7 +313,7 @@ def main() -> None:
         ]
     )
     
-    print(f"Processing complete.\n{num_converted_scenes} scenes were converted to local coordinates and are written to \n{outpath}")
+    print(f"Processing complete.\n{num_converted_scenes} scenes were converted to global coordinates and are written to \n{outpath}")
     
     return
 
