@@ -282,12 +282,12 @@ def main() -> None:
     device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
     print(f"\nUsing device {device} for the conversion...")
 
-    transform_scene(frame=900, path=path_to_scenes, trajectory=trajectory, device=device, sensor_res=0.11)
+    # transform_scene(frame=900, path=path_to_scenes, trajectory=trajectory, device=device, sensor_res=0.11)
     
-    '''
+    
     # Loop to convert for each frame goes here
     # Could be parallelized?
-    useParallel = False
+    useParallel = True
     sensor_res = 0.11
 
     if useParallel:
@@ -359,7 +359,7 @@ def main() -> None:
     print(
         f"Processing complete.\n{num_converted_scenes} scenes were converted to global coordinates and are written to \n{outpath}"
     )
-    '''
+    
     return
 
 
