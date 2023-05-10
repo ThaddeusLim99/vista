@@ -143,16 +143,16 @@ def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
     # Another sanity check
     assert observer_points.shape == road_points.shape == forwards.shape == leftwards.shape == upwards.shape, f"Bad trajectory files! One or more trajectories are missing points!"
     
-    # Correct the z-component of our forward vector
-    useCorrectedZ = True
+    # Correct the z-component of our forward vector FIXME This is broken, fix later...
+    useCorrectedZ = False
     if useCorrectedZ:
         print(f"Using the corrected z-compoment of the forward vector!")
         
-        forwards[:][2] = (
-            -(upwards[:][0] * forwards[:][0] + upwards[:][1] * forwards[:][1])
-            / upwards[:][2]
+        forwards[:,2] = (
+            -(upwards[:,0] * forwards[:,0] + upwards[:,1] * forwards[:,1])
+            / upwards[:,2]
         )
-        magnitude = (forwards[:][0] ** 2 + forwards[:][1] ** 2 + forwards[:][2] ** 2) ** (
+        magnitude = (forwards[:,0] ** 2 + forwards[:,1] ** 2 + forwards[:,2] ** 2) ** (
             1 / 2
         )
         forwards /= magnitude    

@@ -163,6 +163,16 @@ def transform_scene(
     forwards = trajectory.getForwards()
     leftwards = trajectory.getLeftwards()
     upwards = trajectory.getUpwards()
+    
+    # Fix the z component of the forwards vector
+    forwards[frame][2] = (
+        -(upwards[frame][0] * forwards[frame][0] + upwards[frame][1] * forwards[frame][1])
+        / upwards[frame][2]
+    )
+    magnitude = (forwards[frame][0] ** 2 + forwards[frame][1] ** 2 + forwards[frame][2] ** 2) ** (
+        1 / 2
+    )
+    forwards /= magnitude
 
     ### INVERSE OF THE CONVERT_SINGLE PROCESS BEGINS HERE ###
 
@@ -192,6 +202,7 @@ def transform_scene(
         ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) + forwards[frame][2] ** 2)
         ** (0.5)
     )
+    
     sin_2 = forwards[frame][2] / (
         ((forwards[frame][0] ** 2 + forwards[frame][1] ** 2) + forwards[frame][2] ** 2)
         ** (0.5)
@@ -204,7 +215,7 @@ def transform_scene(
         xyz.double().T,
     ).T
 
-    # Undo rotation 1 (along z-axis, to CW) FIXME The converted scenes are oriented in the wrong way (rotate CCW by 90 degrees)
+    # Undo rotation 1 (along z-axis, to CW)
     cos_1 = forwards[frame][0] / (
         (forwards[frame][0] ** 2 + forwards[frame][1] ** 2) ** (0.5)
     )
@@ -228,7 +239,7 @@ def transform_scene(
     # Undo conversion from m to mm (convert our xyz back to meters)
     xyz /= 1000
 
-    """
+
     # Now that we have our XYZ coordinates in global (m),
     # we can now write the output to a csv file.
     df = pd.DataFrame(xyz)
@@ -244,9 +255,9 @@ def transform_scene(
     outpath_file = os.path.join(outpath, filename)
 
     df.to_csv(outpath_file, index=False)
-    """
 
-    return xyz
+
+    return 
 
 
 def main() -> None:
@@ -271,9 +282,12 @@ def main() -> None:
     device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
     print(f"\nUsing device {device} for the conversion...")
 
+    transform_scene(frame=900, path=path_to_scenes, trajectory=trajectory, device=device, sensor_res=0.11)
+    
+    '''
     # Loop to convert for each frame goes here
     # Could be parallelized?
-    useParallel = True
+    useParallel = False
     sensor_res = 0.11
 
     if useParallel:
@@ -306,6 +320,7 @@ def main() -> None:
 
     else:
         # Very slow???
+        
         for frame in tqdm(range(num_scenes)):
             transform_scene(
                 frame=frame,
@@ -344,7 +359,7 @@ def main() -> None:
     print(
         f"Processing complete.\n{num_converted_scenes} scenes were converted to global coordinates and are written to \n{outpath}"
     )
-
+    '''
     return
 
 
