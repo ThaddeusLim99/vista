@@ -305,7 +305,7 @@ def main() -> None:
             f"Converting {num_scenes} scenes using parallel pool with {cores} cores..."
         )
         with mp.Pool(cores) as p:  # Opening up more process pools
-            scenes_list = p.starmap(
+            _ = p.starmap(
                 transform_scene,
                 tqdm(
                     [
@@ -334,18 +334,6 @@ def main() -> None:
     outpath = f"{ROOT2}/examples/vista_traces/lidar_output/{os.path.basename(path_to_scenes)}_global"
     if not os.path.exists(outpath):
         os.makedirs(outpath)
-        
-    for scene in tqdm(scenes_list):
-        # Now that we have our XYZ coordinates in global (m),
-        # we can now write the output to a csv file.
-        df = pd.DataFrame(scene)
-        df.columns = ["x", "y", "z"]
-
-        # Get name of output file
-        filename = f"output_{frame}_{sensor_res:.2f}_global.csv"
-        outpath_file = os.path.join(outpath, filename)
-
-        df.to_csv(outpath_file, index=False)
         
     # Another sanity check
     num_converted_scenes = len(
