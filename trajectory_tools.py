@@ -147,15 +147,16 @@ def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
     useCorrectedZ = False
     if useCorrectedZ:
         print(f"Using the corrected z-compoment of the forward vector!")
-        
         forwards[:,2] = (
             -(upwards[:,0] * forwards[:,0] + upwards[:,1] * forwards[:,1])
             / upwards[:,2]
         )
+        
         magnitude = (forwards[:,0] ** 2 + forwards[:,1] ** 2 + forwards[:,2] ** 2) ** (
             1 / 2
         )
-        forwards /= magnitude    
+        
+        forwards[:,2] /= magnitude    
        
     # Finally store the trajectory values into our object
     trajectory = Trajectory(

@@ -164,6 +164,8 @@ def transform_scene(
     leftwards = trajectory.getLeftwards()
     upwards = trajectory.getUpwards()
     
+    # This has been corrected via trajectory_tools.py (need to test)
+    '''
     # Fix the z component of the forwards vector
     forwards[frame][2] = (
         -(upwards[frame][0] * forwards[frame][0] + upwards[frame][1] * forwards[frame][1])
@@ -173,6 +175,7 @@ def transform_scene(
         1 / 2
     )
     forwards /= magnitude
+    '''
 
     ### INVERSE OF THE CONVERT_SINGLE PROCESS BEGINS HERE ###
 
@@ -253,11 +256,9 @@ def transform_scene(
     # Get name of output file
     filename = f"output_{frame}_{sensor_res:.2f}_global.csv"
     outpath_file = os.path.join(outpath, filename)
-
     df.to_csv(outpath_file, index=False)
 
-
-    return 
+    return 0
 
 
 def main() -> None:
@@ -284,7 +285,7 @@ def main() -> None:
 
     # transform_scene(frame=900, path=path_to_scenes, trajectory=trajectory, device=device, sensor_res=0.11)
     
-    
+
     # Loop to convert for each frame goes here
     # Could be parallelized?
     useParallel = True
@@ -302,25 +303,27 @@ def main() -> None:
         # Parallelization thing, we are going to have to see if it works...?
         # Hopefully using CUDA with a parallel for loop won't freeze anythong
         print(
-            f"Converting {num_scenes} scenes using parallel pool with {cores} cores..."
+            f"Converting {num_scenes} scenes to global using parallel pool with {cores} cores..."
         )
+
         with mp.Pool(cores) as p:  # Opening up more process pools
-            _ = p.starmap(
+            result = p.starmap_async(
                 transform_scene,
                 tqdm(
                     [
                         (frame, path_to_scenes, trajectory, device, sensor_res)
                         for frame in range(num_scenes)
                     ],
-                    total=num_scenes,
-                ),
+                    total=num_scenes
+                )
             )
+            result.wait()
+
             p.close()  # No new tasks for our pool
             p.join()  # Wait for all processes to finish
 
     else:
         # Very slow???
-        
         for frame in tqdm(range(num_scenes)):
             transform_scene(
                 frame=frame,
