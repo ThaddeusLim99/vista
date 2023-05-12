@@ -98,9 +98,14 @@ def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
     Returns:
         Trajectory: Container class for our imported trajectory data.
     """
-
+    
     # Get trajectory folder path
-    if args.trajectory == None:
+    try:
+      arg_trajectory = args.trajectory
+    except AttributeError:
+      arg_trajectory = None
+
+    if arg_trajectory == None:
         # Manually open trajectory folder
         Tk().withdraw()
         trajectory_folderpath = tk.filedialog.askdirectory(
@@ -144,7 +149,7 @@ def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
     assert observer_points.shape == road_points.shape == forwards.shape == leftwards.shape == upwards.shape, f"Bad trajectory files! One or more trajectories are missing points!"
     
     # Correct the z-component of our forward vector FIXME This is broken, fix later...
-    useCorrectedZ = False
+    useCorrectedZ = True
     if useCorrectedZ:
         print(f"Using the corrected z-compoment of the forward vector!")
         forwards[:,2] = (

@@ -10,6 +10,7 @@ from pathlib import Path
 from time import perf_counter
 
 import gen_traj
+import trajectory_tools # For obtaining pregenerated trajectories
 
 '''
 Sensor points
@@ -292,6 +293,7 @@ def generate_sensor_points(sensor_config: SensorConfig) -> list:
   
   return points
 
+
 def obtain_trajectory(args: argparse.Namespace) -> Trajectory:
   """Obtains the trajectory from a csv file.
 
@@ -521,7 +523,8 @@ def main():
   args = parse_cmdline_args()
 
   config = open_sensor_config_file(args)
-  trajectory = obtain_trajectory(args)
+  trajectory = obtain_trajectory(args) # locally defined, modified from trajectory_tools
+  # trajectory = trajectory_tools.obtain_trajectory_details(args)
   fov_points = generate_sensor_points(config)
   aligned_fov_points = align_sensor_points(fov_points, trajectory, args.observer_point)
   points_to_las(aligned_fov_points, config, args)
