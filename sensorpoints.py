@@ -370,6 +370,20 @@ def obtain_trajectory(args: argparse.Namespace) -> Trajectory:
     
     # TODO Move observer point generation to gen_traj.generate_trajectory()
     observer_points = road_points + args.observer_height*upwards
+
+  useCorrectedZ = True
+  if useCorrectedZ:
+      print(f"Using the corrected z-compoment of the forward vector!")
+      forwards[:,2] = (
+          -(upwards[:,0] * forwards[:,0] + upwards[:,1] * forwards[:,1])
+          / upwards[:,2]
+      )
+      
+      magnitude = (forwards[:,0] ** 2 + forwards[:,1] ** 2 + forwards[:,2] ** 2) ** (
+          1 / 2
+      )
+      
+      forwards[:,2] /= magnitude
     
   print(f"\nGenerating output using the following parameters:\nobserver_height: {args.observer_height}\nobserver_point:  {args.observer_point}")
   print("(for more information, type 'python sensorpoints.py -h')")
