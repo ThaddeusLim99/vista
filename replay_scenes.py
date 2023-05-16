@@ -22,7 +22,18 @@ if str(ROOT) not in sys.path:
   sys.path.append(str(ROOT))
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
-def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> np.ndarray:
+class _PointCloudPickleable:
+  def __init__(self, points = np.ndarray):
+    self.points = points
+    pass
+  
+  def create_point_cloud(self):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(self.points)
+    return pcd
+
+
+def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> _PointCloudPickleable:
   # outputs are in the format output_FRAME_0.11.txt
   # split the first scene file to obtain the sensor resolution...
 
@@ -33,10 +44,10 @@ def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> np.ndarra
   xyz = np.delete(xyzypd, [3,4,5], axis=1) # We don't want spherical coordinates in our scene data
   xyz = np.delete(xyz, 0, axis=0)          # We don't want our header either since it reads into nan
   xyz /= 1000   # Convert from mm to m
-
+  
   # pcd = o3d.geometry.PointCloud()
   # pcd.points = o3d.utility.Vector3dVector(xyz)
-  return xyz
+  return _PointCloudPickleable(xyz)
 
 def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, offset: int) -> None:
   
@@ -80,7 +91,7 @@ def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, of
     vis.update_renderer()
     
     # Delay
-    time.sleep(1)
+    time.sleep(0.016)
 
   vis.destroy_window()
   return
@@ -101,9 +112,11 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
   
   offset = int(min(filenames, key=lambda x: int((x.split('_'))[1])).split('_')[1])
 
-  cores = int((mp.cpu_count()/2) - 1)
+  mp.freeze_support()
+  cores = int((mp.cpu_count()) - 1)
+
   with mp.Pool(cores) as p:
-    xyzs = p.starmap(
+    result = p.starmap_async(
       open_point_cloud,
       tqdm(
         [
@@ -117,10 +130,13 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
     p.close()
     p.join()
 
-    xyzs = np.array(xyzs, dtype=object)
+    xyzs = result.get()
+    xyzs = [cloud.create_point_cloud() for cloud in xyzs]
+    pcds = np.array(xyzs, dtype=object)
     # Vectorize the conversion of our point clouds given in np.ndarray to
     # Open3D point cloud
     
+    '''
     # Helper function that will be vectorized
     def convert_cloud_to_o3d(xyz: np.ndarray, pbar) -> o3d.geometry.PointCloud:
       """Helper function to convert a point cloud given in an ndarray
@@ -142,7 +158,7 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
     with tqdm(desc="Preprocessing point clouds", total=xyzs.shape[0], leave=True) as pbar:
       pcds = np.vectorize(convert_cloud_to_o3d)(xyzs, pbar)
       pbar.close()
-
+  ''' 
   return pcds, res, offset
 
 def main():
