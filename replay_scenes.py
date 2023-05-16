@@ -1,6 +1,8 @@
 import numpy as np
-import multiprocessing as mp
+# import pathos.multiprocessing as mp
+
 import open3d as o3d
+import open3d.core as o3c
 import pandas
 import argparse
 import tkinter as tk
@@ -23,11 +25,11 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class _PointCloudPickleable:
-  def __init__(self, points = np.ndarray):
+  def __init__(self, points: np.ndarray):
     self.points = points
     pass
   
-  def create_point_cloud(self):
+  def create_point_cloud(self) -> o3d.geometry.PointCloud:
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(self.points)
     return pcd
@@ -39,15 +41,19 @@ def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> _PointClo
 
   scene_name = f"output_{frame}_{res:.2f}.txt"
   path_to_scene = os.path.join(path2scenes, scene_name)
-
+  
   xyzypd = np.genfromtxt(path_to_scene, delimiter=",")
   xyz = np.delete(xyzypd, [3,4,5], axis=1) # We don't want spherical coordinates in our scene data
   xyz = np.delete(xyz, 0, axis=0)          # We don't want our header either since it reads into nan
   xyz /= 1000   # Convert from mm to m
   
-  # pcd = o3d.geometry.PointCloud()
-  # pcd.points = o3d.utility.Vector3dVector(xyz)
-  return _PointCloudPickleable(xyz)
+  pcd = o3d.geometry.PointCloud()
+  pcd.points = o3d.utility.Vector3dVector(xyz)
+  
+  pbar.update()
+
+  return pcd
+  
 
 def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, offset: int) -> None:
   
@@ -63,17 +69,7 @@ def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, of
   # 8-bit RGB, (16, 16, 16)
   render_opt.background_color = np.array([16/255, 16/255, 16/255])
   
-  '''
-  geometry = open_point_cloud(path2scenes, 0+offset, res, ".txt")
-  # print(type(geometry))
-  vis.add_geometry(geometry)
-  vis.update_geometry(geometry)
-  #vis.poll_events()
-  vis.update_renderer()
-  vis.run()
-  vis.destroy_window()  
-  '''
-  
+
   geometry = o3d.geometry.PointCloud()
   vis.add_geometry(geometry)
 
@@ -112,53 +108,49 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
   
   offset = int(min(filenames, key=lambda x: int((x.split('_'))[1])).split('_')[1])
 
-  mp.freeze_support()
-  cores = int((mp.cpu_count()) - 1)
+  # Here we will use pathos instead of multiprocessing because of how
+  # multiprocessing cannot pickle Open3D point clouds.
+  from pathos.maps import Smap
+  from pathos.helpers import ThreadPool
 
-  with mp.Pool(cores) as p:
-    result = p.starmap_async(
-      open_point_cloud,
+  import multiprocessing as mp
+  mp.freeze_support()
+  cores = min(int((mp.cpu_count()) - 1), len(filenames))
+
+  # Starmap via pathos.maps for testing purposes
+  with ThreadPool(cores) as p:
+
+    '''
+    smap = Smap()
+    pcds = smap.__call__(
+      open_point_cloud, 
       tqdm(
-        [
-          (path2scenes, frame+offset, res)
-          for frame in range(len(filenames))
-        ],
-        total = len(filenames),
-        desc="Reading scenes into memory"
+          [
+          (path2scenes, frame+offset, res) for frame in range(len(filenames))
+          ],
+          total=len(filenames),
+          desc="Reading scenes to memory"
+        )
       )
-    )
+    print(pcds)
+    '''
+    print(f"Starting paralllel pool with {cores} cores...")
+    # Arguments of the parallelized for loop
+    args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
+  
+    # Map open_point_cloud() for each frame, parallelized using pathos.helpers.
+    global pbar # Global for updating tqdm loop
+    with tqdm(args, total=len(filenames), desc="Reading scenes to memory") as pbar:
+      pcds = p.starmap(
+        open_point_cloud,
+        args
+      )
+    
     p.close()
     p.join()
-
-    xyzs = result.get()
-    xyzs = [cloud.create_point_cloud() for cloud in xyzs]
-    pcds = np.array(xyzs, dtype=object)
-    # Vectorize the conversion of our point clouds given in np.ndarray to
-    # Open3D point cloud
     
-    '''
-    # Helper function that will be vectorized
-    def convert_cloud_to_o3d(xyz: np.ndarray, pbar) -> o3d.geometry.PointCloud:
-      """Helper function to convert a point cloud given in an ndarray
-      to a PointCloud object in Open3D. This function will be vectorized for speed
-
-      Args:
-          xyz (np.ndarray): Our xyz points of the point cloud.
-          
-          pbar (tqdm.std.tqdm): Our progress bar for visualization.
-
-      Returns:
-          pcd (o3d.geometry.PointCloud): The converted point cloud.
-      """
-      pcd = o3d.geometry.PointCloud()
-      pcd.points = o3d.utility.Vector3dVector(xyz)
-      pbar.update()
-      return pcd
-
-    with tqdm(desc="Preprocessing point clouds", total=xyzs.shape[0], leave=True) as pbar:
-      pcds = np.vectorize(convert_cloud_to_o3d)(xyzs, pbar)
-      pbar.close()
-  ''' 
+    print(f"{len(pcds)} scenes were read to memory.")
+      
   return pcds, res, offset
 
 def main():
