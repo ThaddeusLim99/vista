@@ -121,7 +121,7 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
       tqdm(
         [
           (path2scenes, frame+offset, res)
-          for frame, _ in enumerate(filenames)
+          for frame in range(len(filenames))
         ],
         total = len(filenames),
         desc="Reading scenes into memory"
