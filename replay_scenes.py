@@ -2,7 +2,6 @@ import numpy as np
 # import pathos.multiprocessing as mp
 
 import open3d as o3d
-import open3d.core as o3c
 import pandas
 import argparse
 import tkinter as tk
@@ -34,20 +33,23 @@ class PointCloudOpener:
 
     scene_name = f"output_{frame}_{res:.2f}.txt"
     path_to_scene = os.path.join(path2scenes, scene_name)
-    print(scene_name)
+    # print(scene_name)
     
     xyzypd = np.genfromtxt(path_to_scene, delimiter=",")
     xyz = np.delete(xyzypd, [3,4,5], axis=1) # We don't want spherical coordinates in our scene data
     xyz = np.delete(xyz, 0, axis=0)          # We don't want our header either since it reads into nan
     xyz /= 1000   # Convert from mm to m
     
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(xyz)
+    #pcd = o3d.geometry.PointCloud()
+    #pcd.points = o3d.utility.Vector3dVector(xyz)
     
-    self.pbar.update()
+    # self.pbar.update()
+
+    #return pcd
+    pcd = o3d.t.geometry.PointCloud(o3d.core.Device("CPU:0"))
+    pcd.point.positions = o3d.core.Tensor(xyz, o3d.core.float32, o3d.core.Device("CPU:0"))
 
     return pcd
-
 '''
 def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> o3d.geometry.PointCloud:
   # outputs are in the format output_FRAME_0.11.txt
@@ -90,6 +92,7 @@ def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, of
   for frame, scene in enumerate(scenes_list):
     # Just get your Open3D point cloud from scenes_list; read into memory for speed reasons
     # o3d.visualization.draw_geometries([geometry])    
+    # geometry.points = scene.to_legacy().points  # IF THE SCENE IS IN TENSOR
     geometry.points = scene.points
     
     if frame == 0:
@@ -122,12 +125,11 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
   
   offset = int(min(filenames, key=lambda x: int((x.split('_'))[1])).split('_')[1])
 
-  # Here we will use pathos instead of multiprocessing because of how
-  # multiprocessing cannot pickle Open3D point clouds.
-  import pathos, multiprocess
-  from pathos.helpers import ThreadPool
-  from pathos.multiprocessing import ProcessingPool
-  import dill
+  # Read each of the scenes into memory
+  # This should be parallelized
+  import joblib
+  from joblib import Parallel, delayed
+  cores = joblib.cpu_count() - 1
 
   ''' SMAP, NEED TO PASS POOL INTO IT IN THE FIRST PLACE
   from pathos.maps import Smap
@@ -144,33 +146,22 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
     )
   print(pcds)
   '''
-
-  import multiprocessing as mp
-
-
-  mp.freeze_support()
-  cores = min(int((mp.cpu_count()) - 1), len(filenames))
+  opener = PointCloudOpener()
+  args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
   
-  from multiprocess.pool import ThreadPool
-  with ThreadPool(processes=cores) as p:
-
-    print(f"Starting parallel pool with {cores} cores...")
-    # Arguments of the parallelized for loop
-    args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
+  #with tqdm(args, total=len(filenames),desc="Reading scenes to memory") as pbar:
+  #  opener.set_pbar(pbar)
+  #  pcds = Parallel(n_jobs=cores)(
+  #    delayed(opener.open_point_cloud)(arg0, arg1, arg2) for arg0, arg1, arg2 in args
+  #    )
+  pcds = Parallel(n_jobs=cores)(
+    delayed(opener.open_point_cloud)(arg0, arg1, arg2) for arg0, arg1, arg2 in tqdm(args, total=len(filenames),desc="Reading scenes to memory")
+    )
   
-    # Map open_point_cloud() for each frame, parallelized using pathos.helpers.
-    opener = PointCloudOpener()
-    with tqdm(args, total=len(filenames), desc="Reading scenes to memory") as pbar:
-      opener.set_pbar(pbar)
-      pcds = p.starmap(
-        opener.open_point_cloud,
-        args
-      )
-    
-    p.close()
-    p.join()
-    
-    print(f"{len(pcds)} scenes were read to memory.")
+  pcds = tqdm([pcd.to_legacy() for pcd in pcds], desc="preprocess")
+  
+  print(f"{len(pcds)} scenes were read to memory.")
+
   
 
   '''    # CANNOT SERIALIZE
