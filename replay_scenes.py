@@ -24,18 +24,32 @@ if str(ROOT) not in sys.path:
   sys.path.append(str(ROOT))
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
-class _PointCloudPickleable:
-  def __init__(self, points: np.ndarray):
-    self.points = points
-    pass
+class PointCloudOpener:
+  def set_pbar(self, pbar) -> None:
+    self.pbar = pbar
   
-  def create_point_cloud(self) -> o3d.geometry.PointCloud:
+  def open_point_cloud(self, path2scenes: str, frame: int, res: np.float32) -> o3d.geometry.PointCloud:
+    # outputs are in the format output_FRAME_0.11.txt
+    # split the first scene file to obtain the sensor resolution...
+
+    scene_name = f"output_{frame}_{res:.2f}.txt"
+    path_to_scene = os.path.join(path2scenes, scene_name)
+    print(scene_name)
+    
+    xyzypd = np.genfromtxt(path_to_scene, delimiter=",")
+    xyz = np.delete(xyzypd, [3,4,5], axis=1) # We don't want spherical coordinates in our scene data
+    xyz = np.delete(xyz, 0, axis=0)          # We don't want our header either since it reads into nan
+    xyz /= 1000   # Convert from mm to m
+    
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(self.points)
+    pcd.points = o3d.utility.Vector3dVector(xyz)
+    
+    self.pbar.update()
+
     return pcd
 
-
-def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> _PointCloudPickleable:
+'''
+def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> o3d.geometry.PointCloud:
   # outputs are in the format output_FRAME_0.11.txt
   # split the first scene file to obtain the sensor resolution...
 
@@ -53,7 +67,7 @@ def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> _PointClo
   pbar.update()
 
   return pcd
-  
+''' 
 
 def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, offset: int) -> None:
   
@@ -110,39 +124,46 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
 
   # Here we will use pathos instead of multiprocessing because of how
   # multiprocessing cannot pickle Open3D point clouds.
-  from pathos.maps import Smap
+  import pathos, multiprocess
   from pathos.helpers import ThreadPool
+  from pathos.multiprocessing import ProcessingPool
+  import dill
+
+  ''' SMAP, NEED TO PASS POOL INTO IT IN THE FIRST PLACE
+  from pathos.maps import Smap
+  smap = Smap()
+  pcds = smap.__call__(
+    open_point_cloud, 
+    tqdm(
+        [
+        (path2scenes, frame+offset, res) for frame in range(len(filenames))
+        ],
+        total=len(filenames),
+        desc="Reading scenes to memory"
+      )
+    )
+  print(pcds)
+  '''
 
   import multiprocessing as mp
+
+
   mp.freeze_support()
   cores = min(int((mp.cpu_count()) - 1), len(filenames))
+  
+  from multiprocess.pool import ThreadPool
+  with ThreadPool(processes=cores) as p:
 
-  # Starmap via pathos.maps for testing purposes
-  with ThreadPool(cores) as p:
-
-    '''
-    smap = Smap()
-    pcds = smap.__call__(
-      open_point_cloud, 
-      tqdm(
-          [
-          (path2scenes, frame+offset, res) for frame in range(len(filenames))
-          ],
-          total=len(filenames),
-          desc="Reading scenes to memory"
-        )
-      )
-    print(pcds)
-    '''
-    print(f"Starting paralllel pool with {cores} cores...")
+    print(f"Starting parallel pool with {cores} cores...")
     # Arguments of the parallelized for loop
     args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
   
     # Map open_point_cloud() for each frame, parallelized using pathos.helpers.
-    global pbar # Global for updating tqdm loop
+    opener = PointCloudOpener()
     with tqdm(args, total=len(filenames), desc="Reading scenes to memory") as pbar:
+      opener.set_pbar(pbar)
       pcds = p.starmap(
-        open_point_cloud,
+        opener.open_point_cloud,
         args
       )
     
@@ -150,7 +171,32 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
     p.join()
     
     print(f"{len(pcds)} scenes were read to memory.")
+  
+
+  '''    # CANNOT SERIALIZE
+  # with ProcessingPool(nodes=cores) as p:
+  with multiprocess.Pool(cores) as p:
+    print(f"Starting parallel pool with {cores} cores...")
+    
+    # Arguments of the parallelized for loop
+    args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
+    #[('sample_scenes/', 245, 0.11), ('sample_scenes/', 246, 0.11), ('sample_scenes/', 247, 0.11), ('sample_scenes/', 248, 0.11), ('sample_scenes/', 249, 0.11), ('sample_scenes/', 250, 0.11), ('sample_scenes/', 251, 0.11), ('sample_scenes/', 252, 0.11), ('sample_scenes/', 253, 0.11), ('sample_scenes/', 254, 0.11), ('sample_scenes/', 255, 0.11)]
+    opener = PointCloudOpener()
+    # func = lambda x: opener.open_point_cloud(*x)
+
+    with tqdm(args, total=len(filenames), desc="Reading scenes to memory") as pbar:
+      # opener.set_pbar(pbar)
       
+      pcds = p.starmap(
+        opener.open_point_cloud,
+        args
+      )
+      p.close()
+      p.join()
+      
+    print(pcds)
+  '''
+  
   return pcds, res, offset
 
 def main():
