@@ -109,22 +109,16 @@ def obtain_scenes(path2scenes: str) -> list:
   # Define the arguments that will be ran upon in parallel.
   args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
   
-  start = time.perf_counter()
-  pcds = Parallel(n_jobs=cores,backend='multiprocessing')(
+  pcds = Parallel(n_jobs=cores)(
     delayed(opener.open_point_cloud)(arg_path2scenes, arg_frame, arg_res)
     for arg_path2scenes, arg_frame, arg_res in tqdm(args, 
                                                     total=len(filenames), 
                                                     desc=f"Reading scenes to memory in parallel, using {cores} processes")
     )
-  end = time.perf_counter()
-  print(end-start)
+
   print(f"\n{len(pcds)} scenes were read to memory.")
   
-  start = time.perf_counter()
-  for arg_path2scenes, arg_frame, arg_res in args:
-    pcds.append(opener.open_point_cloud(arg_path2scenes, arg_frame, arg_res))
-  end = time.perf_counter()
-  print(end-start)
+
   # Now that we have our point clouds in tensor form, we can convert them back into legacy form for replaying.
   # The conversion process should be pretty fast, taking about 0.4ms for a scene with 241350 points.
   # pcds = [pcd.to_legacy() for pcd in tqdm(pcds, desc="Preprocessing scenes", total=len(pcds), leave=True)] 
