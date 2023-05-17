@@ -43,6 +43,12 @@ class PointCloudOpener:
  
 def replay_scenes(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: np.float32, point_density: np.float32) -> None:
   
+  usr_inpt = input(f"Press 'p' to replay {len(scenes_list)} scenes given by {path2scenes}: ")
+  if usr_inpt == 'p':
+    pass
+  else:
+    replay_scenes(path2scenes, scenes_list, vehicle_speed, point_density)
+    
   print(f"Visualizing the scenes given by path {path2scenes}")
   
   # Example taken from open3d non-blocking visualization...
@@ -60,7 +66,7 @@ def replay_scenes(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: np.f
   geometry = o3d.geometry.PointCloud()
   vis.add_geometry(geometry)
 
-  for frame, scene in enumerate(scenes_list):
+  for frame, scene in enumerate(tqdm(scenes_list, desc="Replaying scenes")):
     # Just get your Open3D point cloud from scenes_list; read into memory for speed reasons
     # o3d.visualization.draw_geometries([geometry])    
     geometry.points = scene.to_legacy().points  # IF THE SCENE IS IN TENSOR
@@ -73,10 +79,13 @@ def replay_scenes(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: np.f
   
     vis.poll_events()
     vis.update_renderer()
+    # Capture screen of visualizer here (vis.capture_screen_image(PATH2PNG))
+    # Get POV of visualizer with 'ctr = vis.get_view_control()?'
     
     # Delay to replay relative to speed
     time.sleep((1*point_density)/(vehicle_speed/3.6))
 
+  print("Visualization complete.")
   vis.destroy_window()
   return
 
