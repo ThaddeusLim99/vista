@@ -2,7 +2,7 @@
 
 ### USER INPUT HERE ###
 processes=6
-LASFILE="01617W_L1L2_L1L3_08000_04000.las"
+LASFILE="01617W_L1L2_L1L3_12000_08000.las"
 JSONFILE=velodyne_alpha_128.json # Do not put quotes here
 observer_height=1.8
 PAD_OUTPUTS=true
@@ -15,6 +15,7 @@ PITCH_MAX=15
 YAW_MIN=-180
 YAW_MAX=180
 RANGE=245
+CULLING_R= 2
 
 # Comment this out if you want to generate a trajectory or if you already have a pregenerated trajectory
 python gen_traj.py --input examples/vista_traces/${LASFILE} --observer_height ${observer_height}
@@ -45,6 +46,7 @@ export PITCH_MAX
 export YAW_MIN
 export YAW_MAX
 export RANGE
+export CULLING_R
 
 export LASFILE
 export STARTFRAME

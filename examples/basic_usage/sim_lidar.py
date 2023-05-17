@@ -93,7 +93,7 @@ if __name__ == "__main__":
         default=19,
         help="Maximum pitch angle",
     )
-    parser.add_argument("--culling-r", type=int, default=1, help="Culling Rate")
+    parser.add_argument("--culling-r", type=float, default=1, help="Culling Rate")
     parser.add_argument("--frame", type=int, help="Frame number")
     parser.add_argument("--downsample", action="store_true")
     parser.add_argument("--filename", type=str, help="Filename of the .las file")
