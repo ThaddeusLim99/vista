@@ -1,8 +1,6 @@
 import numpy as np
-# import pathos.multiprocessing as mp
-
 import open3d as o3d
-import pandas
+import pandas as pd
 import argparse
 import tkinter as tk
 import sys, os
@@ -24,56 +22,29 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class PointCloudOpener:
-  def set_pbar(self, pbar) -> None:
-    self.pbar = pbar
   
-  def open_point_cloud(self, path2scenes: str, frame: int, res: np.float32) -> o3d.geometry.PointCloud:
-    # outputs are in the format output_FRAME_0.11.txt
-    # split the first scene file to obtain the sensor resolution...
+  def open_point_cloud(self, path2scenes: str, frame: int, res: np.float32) -> o3d.t.geometry.PointCloud:
 
     scene_name = f"output_{frame}_{res:.2f}.txt"
     path_to_scene = os.path.join(path2scenes, scene_name)
     # print(scene_name)
     
-    xyzypd = np.genfromtxt(path_to_scene, delimiter=",")
-    xyz = np.delete(xyzypd, [3,4,5], axis=1) # We don't want spherical coordinates in our scene data
-    xyz = np.delete(xyz, 0, axis=0)          # We don't want our header either since it reads into nan
-    xyz /= 1000   # Convert from mm to m
-    
-    #pcd = o3d.geometry.PointCloud()
-    #pcd.points = o3d.utility.Vector3dVector(xyz)
-    
-    # self.pbar.update()
+    # Skip our header, and read only XYZ coordinates
+    df = pd.read_csv(path_to_scene, skiprows=0, usecols=[0, 1, 2])
+    xyz = df.to_numpy() / 1000
 
-    #return pcd
+    
+    # Create Open3D point cloud object with tensor values.
+    # For parallelization, outputs must be able to be serialized 
     pcd = o3d.t.geometry.PointCloud(o3d.core.Device("CPU:0"))
     pcd.point.positions = o3d.core.Tensor(xyz, o3d.core.float32, o3d.core.Device("CPU:0"))
 
     return pcd
-'''
-def open_point_cloud(path2scenes: str, frame: int, res: np.float32) -> o3d.geometry.PointCloud:
-  # outputs are in the format output_FRAME_0.11.txt
-  # split the first scene file to obtain the sensor resolution...
-
-  scene_name = f"output_{frame}_{res:.2f}.txt"
-  path_to_scene = os.path.join(path2scenes, scene_name)
-  
-  xyzypd = np.genfromtxt(path_to_scene, delimiter=",")
-  xyz = np.delete(xyzypd, [3,4,5], axis=1) # We don't want spherical coordinates in our scene data
-  xyz = np.delete(xyz, 0, axis=0)          # We don't want our header either since it reads into nan
-  xyz /= 1000   # Convert from mm to m
-  
-  pcd = o3d.geometry.PointCloud()
-  pcd.points = o3d.utility.Vector3dVector(xyz)
-  
-  pbar.update()
-
-  return pcd
-''' 
-
-def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, offset: int) -> None:
+ 
+def replay_scenes(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: np.float32, point_density: np.float32) -> None:
   
   print(f"Visualizing the scenes given by path {path2scenes}")
+  
   # Example taken from open3d non-blocking visualization...
   vis = o3d.visualization.Visualizer()
   vis.create_window()
@@ -92,8 +63,8 @@ def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, of
   for frame, scene in enumerate(scenes_list):
     # Just get your Open3D point cloud from scenes_list; read into memory for speed reasons
     # o3d.visualization.draw_geometries([geometry])    
-    # geometry.points = scene.to_legacy().points  # IF THE SCENE IS IN TENSOR
-    geometry.points = scene.points
+    geometry.points = scene.to_legacy().points  # IF THE SCENE IS IN TENSOR
+    # geometry.points = scene.points # Point clouds are preprocessed from tensor to legacy
     
     if frame == 0:
       vis.add_geometry(geometry)
@@ -103,18 +74,18 @@ def replay_scenes(path2scenes: str, scenes_list: np.ndarray, res: np.float32, of
     vis.poll_events()
     vis.update_renderer()
     
-    # Delay
-    time.sleep(0.016)
+    # Delay to replay relative to speed
+    time.sleep((1*point_density)/(vehicle_speed/3.6))
 
   vis.destroy_window()
   return
 
-def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
+def obtain_scenes(path2scenes: str) -> list:
   
   path2scenes_ext = os.path.join(path2scenes, '*.txt')
   
-  # get list of filenames within our scenes list
-  # filenames are guaranteed to be of the format "output_FRAME_SENSORRES.txt"
+  # Get list of filenames within our scenes list
+  # Filenames are guaranteed to be of the format "output_FRAME_RES.txt"
   filenames = [os.path.basename(abs_path) for abs_path in glob.glob(path2scenes_ext)]
   
   res = np.float32(
@@ -123,82 +94,49 @@ def obtain_scenes_details(path2scenes: str) -> list or np.float32 or int:
         )[0])
       )
   
+  # For offsetting frame indexing in case if we are working with padded output
+  # Output should usually be padded anyways
   offset = int(min(filenames, key=lambda x: int((x.split('_'))[1])).split('_')[1])
 
-  # Read each of the scenes into memory
-  # This should be parallelized
+  # Read each of the scenes into memory in parallel
   import joblib
   from joblib import Parallel, delayed
-  cores = joblib.cpu_count() - 1
+  
+  cores = min((joblib.cpu_count() - 1), len(filenames))
 
-  ''' SMAP, NEED TO PASS POOL INTO IT IN THE FIRST PLACE
-  from pathos.maps import Smap
-  smap = Smap()
-  pcds = smap.__call__(
-    open_point_cloud, 
-    tqdm(
-        [
-        (path2scenes, frame+offset, res) for frame in range(len(filenames))
-        ],
-        total=len(filenames),
-        desc="Reading scenes to memory"
-      )
-    )
-  print(pcds)
-  '''
+  # Create our opener object (for inputs/outputs to be serializable)
   opener = PointCloudOpener()
+  # Define the arguments that will be ran upon in parallel.
   args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
   
-  #with tqdm(args, total=len(filenames),desc="Reading scenes to memory") as pbar:
-  #  opener.set_pbar(pbar)
-  #  pcds = Parallel(n_jobs=cores)(
-  #    delayed(opener.open_point_cloud)(arg0, arg1, arg2) for arg0, arg1, arg2 in args
-  #    )
-  pcds = Parallel(n_jobs=cores)(
-    delayed(opener.open_point_cloud)(arg0, arg1, arg2) for arg0, arg1, arg2 in tqdm(args, total=len(filenames),desc="Reading scenes to memory")
+  start = time.perf_counter()
+  pcds = Parallel(n_jobs=cores,backend='multiprocessing')(
+    delayed(opener.open_point_cloud)(arg_path2scenes, arg_frame, arg_res)
+    for arg_path2scenes, arg_frame, arg_res in tqdm(args, 
+                                                    total=len(filenames), 
+                                                    desc=f"Reading scenes to memory in parallel, using {cores} processes")
     )
+  end = time.perf_counter()
+  print(end-start)
+  print(f"\n{len(pcds)} scenes were read to memory.")
   
-  pcds = tqdm([pcd.to_legacy() for pcd in pcds], desc="preprocess")
+  start = time.perf_counter()
+  for arg_path2scenes, arg_frame, arg_res in args:
+    pcds.append(opener.open_point_cloud(arg_path2scenes, arg_frame, arg_res))
+  end = time.perf_counter()
+  print(end-start)
+  # Now that we have our point clouds in tensor form, we can convert them back into legacy form for replaying.
+  # The conversion process should be pretty fast, taking about 0.4ms for a scene with 241350 points.
+  # pcds = [pcd.to_legacy() for pcd in tqdm(pcds, desc="Preprocessing scenes", total=len(pcds), leave=True)] 
   
-  print(f"{len(pcds)} scenes were read to memory.")
-
-  
-
-  '''    # CANNOT SERIALIZE
-  # with ProcessingPool(nodes=cores) as p:
-  with multiprocess.Pool(cores) as p:
-    print(f"Starting parallel pool with {cores} cores...")
-    
-    # Arguments of the parallelized for loop
-    args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
-    #[('sample_scenes/', 245, 0.11), ('sample_scenes/', 246, 0.11), ('sample_scenes/', 247, 0.11), ('sample_scenes/', 248, 0.11), ('sample_scenes/', 249, 0.11), ('sample_scenes/', 250, 0.11), ('sample_scenes/', 251, 0.11), ('sample_scenes/', 252, 0.11), ('sample_scenes/', 253, 0.11), ('sample_scenes/', 254, 0.11), ('sample_scenes/', 255, 0.11)]
-    opener = PointCloudOpener()
-    # func = lambda x: opener.open_point_cloud(*x)
-
-    with tqdm(args, total=len(filenames), desc="Reading scenes to memory") as pbar:
-      # opener.set_pbar(pbar)
-      
-      pcds = p.starmap(
-        opener.open_point_cloud,
-        args
-      )
-      p.close()
-      p.join()
-      
-    print(pcds)
-  '''
-  
-  return pcds, res, offset
+  return pcds
 
 def main():
   args = parse_cmdline_args()
   path_to_scenes = obtain_scene_path(args)
-  scenes, res, offset = obtain_scenes_details(path_to_scenes)
-  replay_scenes(path_to_scenes, scenes, res, offset)
+  scenes = obtain_scenes(path_to_scenes)
+  replay_scenes(path_to_scenes, scenes, vehicle_speed=100, point_density=1.0)
 
-
-  # open_point_cloud(path_to_scenes)
-  
   return
 
 
