@@ -1,15 +1,15 @@
 import numpy as np
 import open3d as o3d
 import pandas as pd
-import argparse
+import cv2
 import tkinter as tk
 import sys, os
 import glob
-from tqdm import tqdm
 import time
+
 from tkinter import Tk
 from pathlib import Path
-
+from tqdm import tqdm
 
 from trajectory_tools import parse_cmdline_args, obtain_scene_path
 
@@ -22,8 +22,21 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class PointCloudOpener:
-  
+  # Opens one specified point cloud as a Open3D tensor point cloud for parallelism
   def open_point_cloud(self, path2scenes: str, frame: int, res: np.float32) -> o3d.t.geometry.PointCloud:
+    """Reads a specified point cloud from a path into memory.
+    This is called in the parallelized loop in obtain_scenes().
+
+    Args:
+        path2scenes (str): The path to the folder containing the scenes.
+        frame (int): The frame of the particular scene.
+        res (np.float32): The resolution of the sensor at which the scene was recorded.
+        This should be given in the filename, where scene names are guaranteed to be
+        "output_<FRAME>_<RES>.txt".
+
+    Returns:
+        pcd (o3d.t.geometry.PointCloud): Our point cloud, in tensor format.
+    """
 
     scene_name = f"output_{frame}_{res:.2f}.txt"
     path_to_scene = os.path.join(path2scenes, scene_name)
@@ -32,7 +45,6 @@ class PointCloudOpener:
     # Skip our header, and read only XYZ coordinates
     df = pd.read_csv(path_to_scene, skiprows=0, usecols=[0, 1, 2])
     xyz = df.to_numpy() / 1000
-
     
     # Create Open3D point cloud object with tensor values.
     # For parallelization, outputs must be able to be serialized 
@@ -40,55 +52,145 @@ class PointCloudOpener:
     pcd.point.positions = o3d.core.Tensor(xyz, o3d.core.float32, o3d.core.Device("CPU:0"))
 
     return pcd
- 
-def replay_scenes(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: np.float32, point_density: np.float32) -> None:
-  
-  usr_inpt = input(f"Press 'p' to replay {len(scenes_list)} scenes given by {path2scenes}: ")
-  if usr_inpt == 'p':
-    pass
-  else:
-    replay_scenes(path2scenes, scenes_list, vehicle_speed, point_density)
+
+# Play our scenes using Open3D's visualizer
+def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: np.float32 = 100, point_density: np.float32 = 1.0) -> list or int:
+
+  # Obtain screen parameters for our video
+  root = Tk()
+  root.withdraw()
+  SCREEN_WIDTH, SCREEN_HEIGHT = root.winfo_screenwidth(), root.winfo_screenheight()
+
+  # Helper function to visualize the replay of our frames in a video format
+  def replay_frames():
     
-  print(f"Visualizing the scenes given by path {path2scenes}")
+    frames = []
+    print(f"Visualizing the scenes given by path {path2scenes}")
+    
+    # Set to isometric front view (NOT WORKING) NOTE This shoud be done before add_geometry
+    ctr = vis.get_view_control() # THis returns a copy of the view control object...
+    ctr.change_field_of_view(step=-50)
+    print(ctr.get_field_of_view())    
+    
+    geometry = o3d.geometry.PointCloud()
+    vis.add_geometry(geometry, reset_bounding_box = False)
+    
+    for frame, scene in enumerate(tqdm(scenes_list, desc="Replaying scenes")):
+      # Just get your Open3D point cloud from scenes_list; read into memory for speed reasons
+      # o3d.visualization.draw_geometries([geometry])    
+      geometry.points = scene.to_legacy().points  # IF THE SCENE IS IN TENSOR
+      # geometry.points = scene.points # Point clouds are preprocessed from tensor to legacy
+      
+      if frame == 0:
+        vis.add_geometry(geometry, reset_bounding_box = True)
+      else:
+        vis.update_geometry(geometry)
+        
+      # look into run()???
+      
+      vis.poll_events()
+      vis.update_renderer()
+      
+      # Capture the rendered point cloud to an RGB image for video output
+      frames.append(np.asarray(vis.capture_screen_float_buffer(do_render=True)))
+      
+      # Play the scenes as it appears in the vehicle's speed
+      # time.sleep((1*point_density)/(vehicle_speed/3.6))
+      time.sleep(1)
+    
+    return frames, SCREEN_WIDTH, SCREEN_HEIGHT
   
   # Example taken from open3d non-blocking visualization...
   vis = o3d.visualization.Visualizer()
-  vis.create_window()
-  
-  # Render options
-  render_opt = vis.get_render_option() 
-  render_opt.point_size = 2.0
-  render_opt.show_coordinate_frame = True
-  # 8-bit RGB, (16, 16, 16)
-  render_opt.background_color = np.array([16/255, 16/255, 16/255])
-  
-
-  geometry = o3d.geometry.PointCloud()
-  vis.add_geometry(geometry)
-
-  for frame, scene in enumerate(tqdm(scenes_list, desc="Replaying scenes")):
-    # Just get your Open3D point cloud from scenes_list; read into memory for speed reasons
-    # o3d.visualization.draw_geometries([geometry])    
-    geometry.points = scene.to_legacy().points  # IF THE SCENE IS IN TENSOR
-    # geometry.points = scene.points # Point clouds are preprocessed from tensor to legacy
+  usr_inpt = input(f"Press 'p' to replay {len(scenes_list)} scenes given by {path2scenes} (press 'q' to exit): ")
+  if usr_inpt == 'p':
     
-    if frame == 0:
-      vis.add_geometry(geometry)
-    else:
-      vis.update_geometry(geometry)
+    vis.create_window(window_name=f"Scenes of {path2scenes}",
+                      width=SCREEN_WIDTH,
+                      height=SCREEN_HEIGHT,
+                      left=10,
+                      top=10)
   
+    # View control options (also must be created befoe we can replay our frames)
+    # TODO GET VIEW CONTROL OPTIONS TO WORK WITH THE VISUALIZER
+    
+    # Render options (must be created before we can replay our frames)
+    render_opt = vis.get_render_option() 
+    render_opt.point_size = 1.0
+    render_opt.show_coordinate_frame = True
+    render_opt.background_color = np.array([16/255, 16/255, 16/255]) # 8-bit RGB, (16, 16, 16)
+    
     vis.poll_events()
     vis.update_renderer()
-    # Capture screen of visualizer here (vis.capture_screen_image(PATH2PNG))
-    # Get POV of visualizer with 'ctr = vis.get_view_control()?'
-    
-    # Delay to replay relative to speed
-    time.sleep((1*point_density)/(vehicle_speed/3.6))
+
+    frames = replay_frames()
+
+  elif usr_inpt == 'q':
+    return
+  else:
+    visualize_replay(path2scenes, scenes_list, vehicle_speed, point_density)  
+
 
   print("Visualization complete.")
+  vis.clear_geometries()
   vis.destroy_window()
+  
+  return frames
+
+# Create a video with a fixed POV of the replay
+def create_video(frames: list, w: int, h: int, path2scenes: str, vehicle_speed: np.float32 = 100, point_density: np.float32 = 1.0) -> None:
+  
+  # Helper function to annotate text onto a frame
+  def annotate_frame(image: np.ndarray, text: str, coord: tuple):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    #annotated_image = cv2.putText(
+    #  image, 
+    #  text, 
+    #  coord, 
+    #  fontface, 
+    #  fontscale, 
+    #  (r, g, b), 
+    #  thickness, 
+    #  linetype
+    #  )
+    return
+
+  # Find a way to make a video from our annotated images
+  # This shouldn't be too bad
+  
+  # Get filename of the recorded visualization
+  filename = f"replay_for_vista_{path2scenes}"
+  
+  output_folder = os.path.join(ROOT2, "visualizations")
+  if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+    
+  output_path = os.path.join(output_folder, filename)
+  
+  # Configure video writer
+  fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+  fps = np.ceil((vehicle_speed/3.6)(1*point_density))
+  writer = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
+  
+  # Now we will create our video
+  for frame_i, img in enumerate(frames):
+    
+    # Annotate our image
+    progress_text = f"Frame {str(frame_i).rjust(len(frames), ' ')}/{len(frames)}"
+    progress_xy = (w, h)
+    frame_annotated = annotate_frame(img, progress_text, progress_xy)
+
+    source_text = f"Replay for simulated scenes given by {os.path.basename(os.path.normpath(path2scenes))}:"
+    source_xy = (w, h)
+    frame_annotated = annotate_frame(frame_annotated, source_text, source_xy)
+    
+    writer.write(frame_annotated)
+    
+  writer.release()
+    
   return
 
+# Read our scenes into memory
 def obtain_scenes(path2scenes: str) -> list:
   
   path2scenes_ext = os.path.join(path2scenes, '*.txt')
@@ -118,7 +220,7 @@ def obtain_scenes(path2scenes: str) -> list:
   # Define the arguments that will be ran upon in parallel.
   args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
   
-  pcds = Parallel(n_jobs=cores)(
+  pcds = Parallel(n_jobs=cores, backend='loky')( # Switched to loky backend to maybe suppress errors?
     delayed(opener.open_point_cloud)(arg_path2scenes, arg_frame, arg_res)
     for arg_path2scenes, arg_frame, arg_res in tqdm(args, 
                                                     total=len(filenames), 
@@ -135,10 +237,11 @@ def obtain_scenes(path2scenes: str) -> list:
   return pcds
 
 def main():
-  args = parse_cmdline_args()
+  args = parse_cmdline_args() # From trajectory_tools.py
   path_to_scenes = obtain_scene_path(args)
   scenes = obtain_scenes(path_to_scenes)
-  replay_scenes(path_to_scenes, scenes, vehicle_speed=100, point_density=1.0)
+  frames, sw, sh = visualize_replay(path_to_scenes, scenes, vehicle_speed=100, point_density=1.0)
+  create_video(frames, w=sw, h=sh, path2scenes=path_to_scenes, vehicle_speed=100, point_density=1.0)
 
   return
 
