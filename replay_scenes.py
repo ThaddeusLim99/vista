@@ -64,17 +64,23 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
   # Helper function to visualize the replay of our frames in a video format
   def replay_frames():
     
-    frames = []
+    frames = [] # Store our recorded frames for visualization
     print(f"Visualizing the scenes given by path {path2scenes}")
     
-    # Set to isometric front view (NOT WORKING) NOTE This shoud be done before add_geometry
-    ctr = vis.get_view_control() # THis returns a copy of the view control object...
-    ctr.change_field_of_view(step=-50)
-    print(ctr.get_field_of_view())    
-    
     geometry = o3d.geometry.PointCloud()
-    vis.add_geometry(geometry, reset_bounding_box = False)
+    vis.add_geometry(geometry)
+    # This is just the coordinate frae for the vectors
+    coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=15, origin=[0,0,0])
+    vis.add_geometry(coordinate_frame)
     
+    # Obtain view control of the visualizer to change POV on setup
+    # NOTE Currently, as of 5/19/2023, the get_view_control() method for the open3d.Visualizer class
+    # only returns a copy of the view control as opposed to a reference.
+    if (o3d.__version__ == "0.17.0"):
+      pass
+    else:
+      ctr = vis.get_view_control()
+
     for frame, scene in enumerate(tqdm(scenes_list, desc="Replaying scenes")):
       # Just get your Open3D point cloud from scenes_list; read into memory for speed reasons
       # o3d.visualization.draw_geometries([geometry])    
@@ -86,7 +92,20 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
       else:
         vis.update_geometry(geometry)
         
-      # look into run()???
+      # Set to isometric front view
+      if (o3d.__version__ == "0.17.0"): # This probably doesn't work
+        # ctr.change_field_of_view(step=50) 
+        print(f"WARNING: Setting view control for open3d version {o3d.__version__} does not work! Setting to default.")
+        vis.get_view_control().set_front([-1, -1, 1])  
+        vis.get_view_control().set_up([0, 0, 1])
+        vis.get_view_control().set_lookat([0, 0, 1.8])
+        vis.get_view_control().set_zoom(0.3)
+      else:    
+        # ctr.change_field_of_view(step=50) 
+        ctr.set_front([-1, -1, 1])  
+        ctr.set_up([0, 0, 1])
+        ctr.set_lookat([0, 0, 1.8])
+        ctr.set_zoom(0.3)    
       
       vis.poll_events()
       vis.update_renderer()
@@ -95,10 +114,10 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
       frames.append(np.asarray(vis.capture_screen_float_buffer(do_render=True)))
       
       # Play the scenes as it appears in the vehicle's speed
-      # time.sleep((1*point_density)/(vehicle_speed/3.6))
-      time.sleep(1)
+      time.sleep((1*point_density)/(vehicle_speed/3.6))
     
     return frames, SCREEN_WIDTH, SCREEN_HEIGHT
+  
   
   # Example taken from open3d non-blocking visualization...
   vis = o3d.visualization.Visualizer()
@@ -109,11 +128,13 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
                       width=SCREEN_WIDTH,
                       height=SCREEN_HEIGHT,
                       left=10,
-                      top=10)
+                      top=10,
+                      visible=True)
+    
+    vis.set_full_screen(True)
   
     # View control options (also must be created befoe we can replay our frames)
     # TODO GET VIEW CONTROL OPTIONS TO WORK WITH THE VISUALIZER
-    
     # Render options (must be created before we can replay our frames)
     render_opt = vis.get_render_option() 
     render_opt.point_size = 1.0
@@ -130,7 +151,6 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
   else:
     visualize_replay(path2scenes, scenes_list, vehicle_speed, point_density)  
 
-
   print("Visualization complete.")
   vis.clear_geometries()
   vis.destroy_window()
@@ -140,26 +160,25 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
 # Create a video with a fixed POV of the replay
 def create_video(frames: list, w: int, h: int, path2scenes: str, vehicle_speed: np.float32 = 100, point_density: np.float32 = 1.0) -> None:
   
+  
   # Helper function to annotate text onto a frame
-  def annotate_frame(image: np.ndarray, text: str, coord: tuple):
+  def annotate_frame(image: np.ndarray, text: str, coord: tuple) -> np.ndarray:
     font = cv2.FONT_HERSHEY_SIMPLEX
-    #annotated_image = cv2.putText(
-    #  image, 
-    #  text, 
-    #  coord, 
-    #  fontface, 
-    #  fontscale, 
-    #  (r, g, b), 
-    #  thickness, 
-    #  linetype
-    #  )
-    return
+    annotated_image = cv2.putText(
+      img=image, 
+      text=text, 
+      org=coord, 
+      fontFace=font,            # Defined below
+      fontScale=font_scale,     #
+      color=font_color,         #
+      thickness=font_thickness, #
+      lineType=cv2.LINE_AA
+      )
+    return annotated_image
 
-  # Find a way to make a video from our annotated images
-  # This shouldn't be too bad
   
   # Get filename of the recorded visualization
-  filename = f"replay_for_vista_{path2scenes}"
+  filename = f"replay_src={path2scenes[:-1]}.mp4"
   
   output_folder = os.path.join(ROOT2, "visualizations")
   if not os.path.exists(output_folder):
@@ -169,22 +188,37 @@ def create_video(frames: list, w: int, h: int, path2scenes: str, vehicle_speed: 
   
   # Configure video writer
   fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-  fps = np.ceil((vehicle_speed/3.6)(1*point_density))
+  fps = np.ceil((vehicle_speed/3.6)/(1*point_density))
   writer = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
   
+  # Parameters for annotating text
+  font = cv2.FONT_HERSHEY_SIMPLEX
+  font_scale = 1
+  font_thickness = 1
+  font_color = (255, 255, 255) # 8-bit RGB
+  
   # Now we will create our video
-  for frame_i, img in enumerate(frames):
+  for frame_i, img in enumerate(tqdm(frames, total=len(frames), desc=f"Writing to video")):
+    print(img.shape)
+    
+    # Open3D normalizes the RGB values from 0 to 1, while OpenCV
+    # requires RGB values from 0 to 255 (8-bit RGB)
+    img = (img[:,:]*255).astype(np.uint8)
     
     # Annotate our image
-    progress_text = f"Frame {str(frame_i).rjust(len(frames), ' ')}/{len(frames)}"
-    progress_xy = (w, h)
+    progress_text = f"Frame {str(frame_i+1).rjust(len(str(len(frames))), '0')}/{len(frames)}"
+    # Get width and height of thes source text
+    progress_text_size = cv2.getTextSize(progress_text, fontFace=font, fontScale=font_scale, thickness=font_thickness)[0]
+    progress_xy = (20, progress_text_size[1]+20)
     frame_annotated = annotate_frame(img, progress_text, progress_xy)
 
-    source_text = f"Replay for simulated scenes given by {os.path.basename(os.path.normpath(path2scenes))}:"
-    source_xy = (w, h)
+    source_text = f"Source: {os.path.basename(os.path.normpath(path2scenes))}"
+    # Get width and height of the source text
+    source_text_size = cv2.getTextSize(source_text, fontFace=font, fontScale=font_scale, thickness=font_thickness)[0]
+    source_xy = (w-source_text_size[0]-20, source_text_size[1]+20)
     frame_annotated = annotate_frame(frame_annotated, source_text, source_xy)
     
-    writer.write(frame_annotated)
+    writer.write(cv2.cvtColor(frame_annotated, cv2.COLOR_BGR2RGB))
     
   writer.release()
     
@@ -236,6 +270,7 @@ def obtain_scenes(path2scenes: str) -> list:
   
   return pcds
 
+# Main function, everything is called here
 def main():
   args = parse_cmdline_args() # From trajectory_tools.py
   path_to_scenes = obtain_scene_path(args)
