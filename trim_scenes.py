@@ -50,7 +50,7 @@ def trim_scene(path2scenes: str, path2outputs: str, frame: int, res: np.float32,
   
   df = pd.DataFrame(trimmed)
   df.columns = ["x", "y", "z", "yaw", "pitch", "depth"]
-  df.to_csv(os.path.join(path2outputs, scene_name))
+  df.to_csv(os.path.join(path2outputs, scene_name), index=False)
 
   return 0
   
