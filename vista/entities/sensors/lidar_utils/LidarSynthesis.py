@@ -306,15 +306,17 @@ class LidarSynthesis:
         valid = ~torch.isnan(neighbor_depth)
         scalar_zero = torch.zeros(1, 1).to(self.device)
         neighbor_depth = torch.where(valid, neighbor_depth, scalar_zero)
-        avg_depth = torch.sum(neighbor_depth, axis=1) / torch.sum(
-            valid.to(torch.float), axis=1
-        )
+        # avg_depth = torch.sum(neighbor_depth, axis=1) / torch.sum(
+        #     valid.to(torch.float), axis=1
+        # )
+        median_depth = torch.median(neighbor_depth, axis=1)
 
         # Estimate if the location is occluded by measuring if its depth
         # greater than its surroundings (i.e. if it is behind its surroundings)
         # Some amound of slack can be added here to allow for edge cases.
         my_depth = sparse[coords[:, 0], coords[:, 1]]
-        occluded = (my_depth - depth_slack) > avg_depth
+        # occluded = (my_depth - depth_slack) > avg_depth
+        occluded = (my_depth - depth_slack) > median_depth
 
         # Return the coordinates in the depth image which are occluded and
         # should be disregarded
