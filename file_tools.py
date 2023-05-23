@@ -343,7 +343,12 @@ def open_las(args: argparse.Namespace):
     User can be manually prompted to enter the point cloud, or it can be set to some
     point cloud via command line for automation. See main() for command line syntax.
     """
-    if args.input == None:
+    try:
+        arg_input = args.input
+    except AttributeError:
+        arg_input = None
+    
+    if arg_input == None:
         # Manually obtain file via UI
         Tk().withdraw()
         las_filename = tk.filedialog.askopenfilename(
@@ -369,6 +374,7 @@ def open_las(args: argparse.Namespace):
         raw_las.gps_time,
         raw_las.scan_angle_rank,
         raw_las.point_source_id,
+        raw_las.intensity,
         las_filename_cut,
     )
 
