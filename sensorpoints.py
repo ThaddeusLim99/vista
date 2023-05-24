@@ -100,7 +100,7 @@ def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
       cfg (SensorConfig): Container class containing the sensor configuration
       parameters.
   """
-  print("Opening sensor file!")
+  # print("\nOpening sensor file!")
   # read the sensor config file and save the params
   if args.config == None:
     # Manually get sensor configuration file
@@ -114,13 +114,13 @@ def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
       title = "Please select the sensor configuration file"
 
     )
-    print(f"You have chosen to open the sensor file:\n{sensorcon_filepath}")
+    print(f"\nYou have chosen to open the sensor file:\n{sensorcon_filepath}")
     
   else:
     sensorcon_filepath = args.config
-    print(f"Using predefined sensor file: {os.path.basename(sensorcon_filepath)}")
+    print(f"\nUsing predefined sensor file: {os.path.basename(sensorcon_filepath)}")
   
-  tStart = perf_counter()
+  #tStart = perf_counter()
   
   with open(sensorcon_filepath, 'r') as f:
     data = f.read()
@@ -142,9 +142,9 @@ def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
   
   cfg.sensor_config_filename = os.path.basename(sensorcon_filepath)
 
-  tStop = perf_counter()
+  #tStop = perf_counter()
 
-  print(f"Loading took {(tStop-tStart):.2f}s.")
+  #print(f"Loading took {(tStop-tStart):.2f}s.")
 
   return cfg
 

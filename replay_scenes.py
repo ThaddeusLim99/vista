@@ -13,7 +13,7 @@ from tkinter import Tk
 from pathlib import Path
 from tqdm import tqdm
 
-from trajectory_tools import parse_cmdline_args, obtain_scene_path
+from file_tools import parse_cmdline_args, obtain_scene_path, open_las
 
 # Global variables for file I/O
 FILE = Path(__file__).resolve()
@@ -67,7 +67,6 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
   # Helper function to visualize the replay of our frames in a video format
   def replay_capture_frames():
     
-    frames = [] # Store our recorded frames for visualization
     print(f"Visualizing the scenes given by path {path2scenes}")
     
     geometry = o3d.geometry.PointCloud()
@@ -102,6 +101,8 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
       else:
         vis.update_geometry(geometry)
         
+      #TODO test the road section remaining constant while the sensor fov
+        
       # Set view of the live action Open3D replay
       if (o3d.__version__ == "0.17.0"): # This probably doesn't work
         # ctr.change_field_of_view(step=50) 
@@ -116,7 +117,7 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
         ctr.set_front([-1, 0, 0])  
         ctr.set_up([0, 0, 1])
         ctr.set_lookat([18.5, 0, 1.8])
-        ctr.set_zoom(0.025)   
+        ctr.set_zoom(0.025) 
         
       ''' Settings for POV of driver:
         ctr.set_front([-1, 0, 0])  
@@ -140,7 +141,6 @@ def visualize_replay(path2scenes: str, scenes_list: np.ndarray, vehicle_speed: n
 
 
       # Capture the rendered point cloud to an RGB image for video output
-      # FIXME Save captured frame to temporary directory instead of memory
       # frames.append(np.asarray(vis.capture_screen_float_buffer(do_render=True)))
       cv2.imwrite(filename=os.path.join(tempdir.name, f"{frame}.png"),
                   img=img
@@ -329,8 +329,8 @@ def obtain_scenes(path2scenes: str) -> list:
 
 # Main function, everything is called here
 def main():
-  args = parse_cmdline_args() # From trajectory_tools.py
-  path_to_scenes = obtain_scene_path(args)
+  args = parse_cmdline_args()               # From trajectory_tools.py
+  path_to_scenes = obtain_scene_path(args)  # 
   scenes = obtain_scenes(path_to_scenes)
   frames, sw, sh = visualize_replay(path_to_scenes, scenes, vehicle_speed=100, point_density=1.0)
   create_video(frames, w=sw, h=sh, path2scenes=path_to_scenes, vehicle_speed=100, point_density=1.0)

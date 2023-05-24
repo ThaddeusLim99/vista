@@ -325,7 +325,7 @@ def obtain_scene_path(args: argparse.Namespace) -> str:
         ]
     )
     print(
-        f"\n{num_scenes} scenes were found for the corresponding road section folder."
+        f"{num_scenes} scenes were found for the corresponding road section folder."
     )
 
     return scenes_folderpath

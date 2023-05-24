@@ -169,7 +169,7 @@ def generate_trajectory(verbose, las_obj, traj):
             window_base_index: int, 
             window_size: int, 
             raw_road_path: np.ndarray
-            ) -> np.ndarray | None:
+            ) -> np.ndarray or None:
         
         """Helper function to remove the outliers from a window of z-coordinates.
         Outliers from the window are recursively removed until the window does not

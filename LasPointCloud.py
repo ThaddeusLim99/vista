@@ -1,3 +1,5 @@
+## DEPRECATED, USE FILE_TOOLS.PY INSTEAD
+
 class LasPointCloud:
   '''
   Container class for the .las file. Cuts down on unused fields from the

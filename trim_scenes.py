@@ -5,7 +5,7 @@ import torch
 import os
 import sys
 
-from trajectory_tools import obtain_scene_path, parse_cmdline_args
+from file_tools import obtain_scene_path, parse_cmdline_args
 from tqdm import tqdm
 from pathlib import Path
 

@@ -9,7 +9,7 @@ import torch.multiprocessing as mp  # Experimental
 from tqdm import tqdm
 from pathlib import Path
 
-import trajectory_tools
+import file_tools
 
 
 """
@@ -90,7 +90,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 def transform_scene(
     frame: int,
     path: str,
-    trajectory: trajectory_tools.Trajectory,
+    trajectory: file_tools.Trajectory,
     device: str,
     sensor_res: float = 0.11,
 ) -> None:
@@ -262,9 +262,9 @@ def transform_scene(
 
 
 def main() -> None:
-    traj_args = trajectory_tools.parse_cmdline_args()
-    trajectory = trajectory_tools.obtain_trajectory_details(traj_args)
-    path_to_scenes = trajectory_tools.obtain_scene_path(traj_args)
+    traj_args = file_tools.parse_cmdline_args()
+    trajectory = file_tools.obtain_trajectory_details(traj_args)
+    path_to_scenes = file_tools.obtain_scene_path(traj_args)
 
     # Sanity check: Make sure that the number of Vista scenes equal the trajectory datapoints
     num_traj_points = trajectory.getRoadPoints().shape[0]
