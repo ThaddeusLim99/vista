@@ -2,7 +2,7 @@
 
 ### USER INPUT HERE ###
 processes=6
-LASFILE="01617W_L1L2_L1L3_12000_08000.las"
+LASFILE="03210N_C1R1_16000_20000_y_trimmed.las"
 JSONFILE=velodyne_alpha_128.json # Do not put quotes here
 observer_height=1.8
 PAD_OUTPUTS=true
@@ -15,7 +15,7 @@ PITCH_MAX=15
 YAW_MIN=-180
 YAW_MAX=180
 RANGE=245
-CULLING_R= 2
+CULLING_R=2
 
 # Comment this out if you want to generate a trajectory or if you already have a pregenerated trajectory
 python gen_traj.py --input examples/vista_traces/${LASFILE} --observer_height ${observer_height}
@@ -89,4 +89,4 @@ matlab -sd "~/Desktop/sensor-voxelization-cst/DataRate_fromCH" -r "data_rate_vis
 
 #FOR DEBUGGING MATLAB FUNCTION, USING ALREADY GENERATED VISTA OUTPUTS
 # NOTE THAT YOU MAY HAVE TO EDIT THE OUTPUT FOLDER
-# data_rate_vista_automated("/home/mohamed/Desktop/sensor-voxelization-cst/DataRate_fromCH/sensors/velodyne_alpha_128.json", "~/Desktop/vista/examples/vista_traces/lidar_output/01617W_L1L2_L1L3_08000_04000_resolution=0.11", true)
+# data_rate_vista_automated("/home/mohamed/Desktop/sensor-voxelization-cst/DataRate_fromCH/sensors/velodyne_alpha_128.json", "~/Desktop/vista/examples/vista_traces/lidar_output/01617W_L1L2_L1L3_08000_04000_resolution=0.11", true, true)
