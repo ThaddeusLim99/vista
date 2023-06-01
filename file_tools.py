@@ -353,7 +353,7 @@ def open_las(args: argparse.Namespace):
         Tk().withdraw()
         las_filename = tk.filedialog.askopenfilename(
             filetypes=[(".las files", "*.las"), ("All files", "*")],
-            initialdir="inputs/",
+            initialdir=ROOT2,
             title="Please select the main point cloud",
         )
 

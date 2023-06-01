@@ -91,6 +91,7 @@ def las2o3d_pcd(las: file_tools.LasPointCloud) -> o3d.geometry.PointCloud:
   
   return pcd, filename
 
+#FIXME Sometimes the animation does not play at all
 # Replays the sensor FOV as our simulated vehicle goes down the road section itself.
 def render_sensor_fov(
   cfg: sensorpoints.SensorConfig, 
@@ -99,7 +100,8 @@ def render_sensor_fov(
   src_name: str,
   temp_dir: tempfile.TemporaryDirectory,
   screen_width: int,
-  screen_height: int
+  screen_height: int,
+  offset: int
   ) -> None:
 
   # Helper function to set the visualizer POV
@@ -160,7 +162,7 @@ def render_sensor_fov(
   if not os.path.exists(subfolder):
     os.makedirs(subfolder)
   
-  for frame in range(num_points):
+  for frame in range(0+offset, num_points-offset):
 
     # Get sensor FOV
     aligned_fov_points, _ = sensorpoints.align_sensor_points(fov_points, traj, frame)
@@ -174,8 +176,8 @@ def render_sensor_fov(
     set_visualizer_pov('center')
     
     # Then update the visualizer
-    if frame == 0:
-      vis.add_geometry(geometry, reset_bounding_box=True)
+    if frame == 0+offset:
+      vis.add_geometry(geometry, reset_bounding_box=False)
     else:
       vis.update_geometry(geometry)
     
@@ -186,14 +188,15 @@ def render_sensor_fov(
     img = np.asarray(vis.capture_screen_float_buffer(do_render=True))
     img = (img[:,:]*255).astype(np.uint8) # Normalize RGB to 8-bit
     
-    cv2.imwrite(filename=os.path.join(subfolder, f"{frame}.png"), img=img)
+    cv2.imwrite(filename=os.path.join(subfolder, f"{frame-offset}.png"), img=img)
     
   print(f"\nFOV rendering on road complete.")
-  vis.clear_geometries()
+  #vis.clear_geometries()
   vis.destroy_window()
 
   return
 
+#FIXME Black screen with visualizer. replay_scenes has a working implementation
 # Replays the Vista outputs as our simulated vehicle goes down the road section itself.
 def render_vista(
   path2scenes: str, 
@@ -223,13 +226,26 @@ def render_vista(
   vis = o3d.visualization.Visualizer()
   # NOTE open3d.visualization.rendering.OffscreenRenderer can probably be used here
   # instead of calling a GUI visualizer
-  
-  vis.create_window(window_name=f"Replay of sensor FOVs on {os.path.basename(os.path.normpath(path2scenes))[:-1]}",
+  vis.create_window(window_name=f"Replay of Vista scenes",
                     width=screen_width,
-                    height=screen_height
-                    )
+                    height=screen_height,
+                    left=10,
+                    top=10,
+                    visible=True)
   
   vis.set_full_screen(True) # Full screen to capture full view
+
+  # Configure our render option
+  render_opt = vis.get_render_option()
+  render_opt.point_size = 1.0
+  render_opt.show_coordinate_frame = True # Does this even work
+  render_opt.background_color = np.array([16/255, 16/255, 16/255]) # 8-bit RGB, (16, 16, 16)
+  
+  vis.poll_events()
+  vis.update_renderer()
+
+  geometry = o3d.geometry.PointCloud()
+  vis.add_geometry(geometry)
   
   # Obtain view control of the visualizer to change POV on setup
   # NOTE Currently, as of 5/19/2023, the get_view_control() method for the open3d.Visualizer class
@@ -238,19 +254,6 @@ def render_vista(
     pass
   else:
     ctr = vis.get_view_control()
-  
-  # Configure our render option
-  render_opt = vis.get_render_option()
-  render_opt.point_size = 1.0
-  render_opt.show_coordinate_frame = True # Does this even work
-  render_opt.background_color = np.array([16/255, 16/255, 16/255]) # 8-bit RGB, (16, 16, 16)
-  
-  
-  geometry = o3d.geometry.PointCloud()
-  vis.add_geometry(geometry)
-
-  vis.poll_events()
-  vis.update_renderer()
 
   # Begin our replay of the sensor FOV
   subfolder = os.path.join(temp_dir.name, 'vista')
@@ -258,15 +261,18 @@ def render_vista(
     os.makedirs(subfolder)
     
   for frame, scene in enumerate(scenes_list):
+    # Our loaded scenes are given in o3d.t.geometry.PointCloud,
+    # convert back to legacy to visualize
     geometry.points = scene.to_legacy().points
     
     if frame == 0:
-      vis.add_geometry(geometry)
+      vis.add_geometry(geometry, reset_bounding_box = False)
     else:
       vis.update_geometry(geometry)
       
     # Set the view from the vehicle's POV
     set_visualizer_pov('pov')
+
   
     # Update the renderer
     vis.poll_events()
@@ -288,6 +294,7 @@ def render_graphical():
   # Shouldn't be too bad
   # set axis range
   # draw real time and then save corresponding frames to tmp dir
+  # given the vista outputs draw graphs for each of the vista outputs
   #os.makedirs(os.path.join(tempdir.name, "graphical"))
   return
 
@@ -395,6 +402,13 @@ def obtain_screen_size() -> tuple:
   
   return (SCREEN_WIDTH, SCREEN_HEIGHT)
 
+def check_for_padded(path2scenes: str) -> int:
+  path2scenes_ext = os.path.join(path2scenes, '*.txt')
+  filenames = [os.path.basename(abs_path) for abs_path in glob.glob(path2scenes_ext)]
+  offset = int(min(filenames, key=lambda x: int((x.split('_'))[1])).split('_')[1])
+  
+  return offset
+
 ##### Driver functions below #####
 
 def run_sensor_fov(
@@ -402,7 +416,8 @@ def run_sensor_fov(
   cfg: sensorpoints.SensorConfig,
   traj: file_tools.Trajectory,
   temp_dir: tempfile.TemporaryDirectory,
-  screen_wh: tuple
+  screen_wh: tuple,
+  offset: int
   ) -> None:
 
   road_o3d, src_name = las2o3d_pcd(road)
@@ -412,7 +427,8 @@ def run_sensor_fov(
                     src_name=src_name, 
                     temp_dir=temp_dir,
                     screen_width=screen_wh[0],
-                    screen_height=screen_wh[1]
+                    screen_height=screen_wh[1],
+                    offset=offset
                     )
   return
 
@@ -443,12 +459,16 @@ def main():
   # Create a temporary directory to store captured frames
   temp_dir = tempfile.TemporaryDirectory(dir=ROOT2)
   screen_wh = obtain_screen_size()
+  frame_offset = check_for_padded(path2scenes)
   
   # Runs and captures the sensor FOV on the road
-  run_sensor_fov(road=road, cfg=cfg, traj=traj, temp_dir=temp_dir, screen_wh=screen_wh)
+  # run_sensor_fov(road=road, cfg=cfg, traj=traj, temp_dir=temp_dir, screen_wh=screen_wh, offset=offset)
   
   # Runs and captures the Vista scenes
   run_vista(path2scenes, temp_dir, screen_wh)
+  #import replay_scenes
+  #slist = obtain_scenes(path2scenes)
+  #_,_,_ = replay_scenes.visualize_replay(path2scenes=path2scenes, scenes_list=slist, vehicle_speed=100, point_density=1)
   
   # Writes our frames into a video
   #stitch_frames()

@@ -36,11 +36,14 @@ def generate_bounds(traj: file_tools.Trajectory) -> np.ndarray:
     # TODO Utilise variable widths (and maybe lengths) later on.
     # For now the sizes of each bounding box are assumed constant.
     num_points = traj.getNumPoints()
+    
+    # Consider the trajectory with the direction that you are trimming the clod
     width = np.array([-20, 20]).reshape((1, 2))  # In the y-direction
-    widths = np.repeat(width, num_points, axis=0)
+    widths = np.repeat(width, num_points, axis=0) # (Temporary) Repeats the widths
 
+    # This should be constant
     length = np.array([-1.5, 1.5]).reshape((1, 2))  # In the x-direction
-    lengths = np.repeat(length, num_points, axis=0)
+    lengths = np.repeat(length, num_points, axis=0) # Repeats the lengths
 
     return widths, lengths
 
@@ -76,6 +79,7 @@ def generate_bounding_boxes(
         point of the trajectory.
     """
 
+    # Obtain rotation matrices, converted from the legacy MATLAB code
     rotation_matrices = np.reshape(
         np.hstack((traj.getForwards(), traj.getLeftwards(), traj.getUpwards())),
         (traj.getNumPoints(), 3, 3),
@@ -277,35 +281,7 @@ def remove_scenery(bounds: np.ndarray, las: laspy.LasData, las_filename: str) ->
     output_folderpath2file = os.path.join(output_folder, f"{las_filename}_y_trimmed.las")  
     with laspy.open(output_folderpath2file, mode='w', header=header) as writer:
         writer.write_points(trimmed_points)
-        print(f"\n{las_filename} has been successfully written to {output_folderpath2file}")
-    
-
-    # test visualization of slice, temp?
-    '''
-    ### test
-    import open3d as o3d
-    
-    print(las.x.shape)
-    indices = np.unique(np.concatenate(indices))
-    print(f"Successfully removed {las.x.shape[0]-indices.shape[0]} points.")
-
-
-    temp_points = np.vstack((las.x[indices], las.y[indices], las.z[indices])).T
-    pcd = o3d.geometry.PointCloud()
-
-    import matplotlib
-    las_intensity = las.intensity[indices]
-    
-    # Normalize intensity values to [0, 1], then assign RGB values
-    normalizer = matplotlib.colors.Normalize(np.min(las_intensity), np.max(las_intensity))
-    las_rgb = matplotlib.cm.gray(normalizer(las_intensity))[:,:-1]
-    pcd.colors = o3d.utility.Vector3dVector(las_rgb) # cmap(las_intensity) returns RGBA, cut alpha channel
-    pcd.points = o3d.utility.Vector3dVector(temp_points)
-    
-    
-    ## test end
-    o3d.visualization.draw_geometries([pcd])
-    '''
+        print(f"\nTrimmed point cloud has been successfully written to {output_folderpath2file}")
     
     return
 
@@ -342,18 +318,21 @@ def open_las(args: argparse.Namespace) -> laspy.LasData:
 
     return raw_las, las_filename_cut
 
-
 # writes the XYZ bounding points for visualization in cloudcompare
-def debug_write_bounds(bounds: np.ndarray):
+def debug_write_bounds(bounds: np.ndarray, las_filename: str):
     # bounds is given as a (road_pts, 4, 3) array
     bounds = bounds.reshape(((bounds.shape[0]*4), 3), order='F')
-    print(bounds.shape)
+    las_filename = os.path.splitext(las_filename)[0]
     
-    np.savetxt(f"{ROOT2}/boundingpoints.csv", bounds, delimiter=',')
+    output_folder = os.path.join(ROOT2, "trimmed")
+    if not os.path.exists(output_folder):
+      os.makedirs(output_folder) 
+    
+    np.savetxt(f"{output_folder}/{las_filename}_boundingpoints.csv", bounds, delimiter=',')
 
     return
 
-# Driver function
+# Driver function for everything
 def main():
     args = file_tools.parse_cmdline_args()
     traj = file_tools.obtain_trajectory_details(args)
@@ -364,8 +343,8 @@ def main():
     las, las_filename = open_las(args)
     remove_scenery(bounds, las, las_filename)
     
-    # Test
-    # debug_write_bounds(bounds)
+    # For testing
+    # debug_write_bounds(bounds, las_filename)
     return
 
 
