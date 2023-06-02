@@ -36,12 +36,31 @@ def generate_bounds(traj: file_tools.Trajectory) -> np.ndarray:
     # TODO Utilise variable widths (and maybe lengths) later on.
     # For now the sizes of each bounding box are assumed constant.
     num_points = traj.getNumPoints()
+<<<<<<< HEAD
     
     # Consider the trajectory with the direction that you are trimming the clod
     width = np.array([-20, 20]).reshape((1, 2))  # In the y-direction
     widths = np.repeat(width, num_points, axis=0) # (Temporary) Repeats the widths
 
     # This should be constant
+=======
+    width = np.array([-1.9, 5.7]).reshape((1, 2))  # In the y-direction
+    widths = np.repeat(width, num_points, axis=0)
+    
+    # From 450 onwards
+    #widths[450:, 0] = -7.9
+    #widths[450:, 1] = 12.8
+    
+    # From 2187 onwards
+    #widths[2187:, 0] = -9.4
+    #widths[2187:, 1] = 14.3
+    
+    # From 2450 onwards
+    #widths[2450:, 0] = -7.9
+    #widths[2450:, 1] = 12.8
+    
+    
+>>>>>>> 0d2bc4f (Changed some parameters for rural)
     length = np.array([-1.5, 1.5]).reshape((1, 2))  # In the x-direction
     lengths = np.repeat(length, num_points, axis=0) # Repeats the lengths
 

@@ -2,7 +2,7 @@
 
 ### USER INPUT HERE ###
 processes=6
-LASFILE="03210N_C1R1_16000_20000_y_trimmed.las"
+LASFILE="03210N_C1R1_12000_16000cut_y_trimmed.las"
 JSONFILE=velodyne_alpha_128.json # Do not put quotes here
 observer_height=1.8
 PAD_OUTPUTS=true
@@ -85,8 +85,8 @@ end_time=`date +%s`
 echo "Vista simulation took $((${end_time}-${start_time})) seconds."
 
 echo "Opening MATLAB and generating graphs..."
-matlab -sd "~/Desktop/sensor-voxelization-cst/DataRate_fromCH" -r "data_rate_vista_automated('${SENSORPATH}', '${VISTAOUTPATH}', '${PAD_OUTPUTS}')"
+matlab -sd "~/Desktop/sensor-voxelization-cst/DataRate_fromCH" -r "data_rate_vista_automated('${SENSORPATH}', '${VISTAOUTPATH}', '${PAD_OUTPUTS}', true)"
 
 #FOR DEBUGGING MATLAB FUNCTION, USING ALREADY GENERATED VISTA OUTPUTS
 # NOTE THAT YOU MAY HAVE TO EDIT THE OUTPUT FOLDER
-# data_rate_vista_automated("/home/mohamed/Desktop/sensor-voxelization-cst/DataRate_fromCH/sensors/velodyne_alpha_128.json", "~/Desktop/vista/examples/vista_traces/lidar_output/01617W_L1L2_L1L3_08000_04000_resolution=0.11", true, true)
+# data_rate_vista_automated("/home/mohamed/Desktop/sensor-voxelization-cst/DataRate_fromCH/sensors/velodyne_alpha_128.json", "~/Desktop/vista/examples/vista_traces/lidar_output/03210N_C1R1_16000_20000_y_trimmed_resolution=0.11", true, true)
