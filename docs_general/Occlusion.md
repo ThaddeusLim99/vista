@@ -1,2 +1,1 @@
 # Occlusion documentation
-

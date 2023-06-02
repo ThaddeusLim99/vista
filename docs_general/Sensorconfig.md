@@ -1,2 +1,1 @@
 # Sensor configuration documentation
-

@@ -424,7 +424,7 @@ def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
     ), f"Bad trajectory files! One or more trajectories are missing points!"
 
     # Correct the z-component of our forward vector FIXME This is broken, fix later...
-    useCorrectedZ = True
+    useCorrectedZ = False
     if useCorrectedZ:
         print(f"Using the corrected z-compoment of the forward vector!")
         forwards[:, 2] = (

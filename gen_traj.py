@@ -448,6 +448,20 @@ def generate_trajectory(verbose, las_obj, traj):
     leftwards = np.cross(upwards, forwards, 1)
     if verbose:
         print(" - Leftward vectors complete.")
+        
+    # Correct the z-component of the forward vector    
+    useCorrectedZ = True
+    if useCorrectedZ:
+        forwards[:, 2] = (
+            -(upwards[:, 0] * forwards[:, 0] + upwards[:, 1] * forwards[:, 1])
+            / upwards[:, 2]
+        )
+
+        magnitude = (
+            forwards[:, 0] ** 2 + forwards[:, 1] ** 2 + forwards[:, 2] ** 2
+        ) ** (1 / 2)
+
+        forwards[:, 2] /= magnitude
 
     if verbose:
         tStop = perf_counter()
