@@ -499,6 +499,39 @@ def obtain_scene_path(args: argparse.Namespace) -> str:
 
     return scenes_folderpath
 
+# Obtain the path to the sensor config
+def obtain_sensor_path(args: argparse.Namespace) -> str:
+    """Opens the sensor configuration file from command-line argument or
+    through UI.
+
+    Args:
+        args (argparse.Namespace): Contains the command-line arguments.
+
+    Returns:
+        sensorcon_filepath (str): Path to the sensor configuration
+    """
+    try:
+        arg_config = args.config
+    except AttributeError:
+        arg_config = None
+
+    # read the sensor config file and save the params
+    if arg_config == None:
+        # Manually get sensor configuration file
+        Tk().withdraw()
+        sensorcon_filepath = tk.filedialog.askopenfilename(
+            filetypes=[(".json files", "*.json"), ("All files", "*")],
+            initialdir=os.path.join(ROOT2, "sensors/"),
+            title="Please select the sensor configuration file",
+        )
+        print(f"\nYou have chosen to open the sensor file:\n{sensorcon_filepath}")
+
+    else:
+        sensorcon_filepath = args.config
+        print(f"\nUsing predefined sensor file: {os.path.basename(sensorcon_filepath)}")
+
+    return sensorcon_filepath
+
 
 # Read our scenes into memory
 def obtain_scenes(path2scenes: str, mode: str) -> list:
@@ -568,7 +601,7 @@ def obtain_scenes(path2scenes: str, mode: str) -> list:
 
     return pcds
 
-
+# Read the sensor configuration into memory
 def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
     """Opens the sensor configuration file from command-line argument or
     through UI.
@@ -585,7 +618,7 @@ def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
     except AttributeError:
         arg_config = None
 
-        import json
+    import json
 
     # read the sensor config file and save the params
     if arg_config == None:
@@ -630,8 +663,7 @@ def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
 
     return cfg
 
-
-# Open our .las point cloud
+# Open our .las point cloud into memory
 def open_las(args: argparse.Namespace) -> LasPointCloud:
     """
     Opens a .las file when prompted to do so. Can force a predetermined filename
