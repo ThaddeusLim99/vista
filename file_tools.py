@@ -1,15 +1,23 @@
 import numpy as np
+import pandas as pd
 import argparse
 import tkinter as tk
 import tkinter.filedialog
+import open3d as o3d
 import laspy
 import sys
 import os
 from tkinter import Tk
 from pathlib import Path
+from tqdm import tqdm
+
 
 """
-Tools for obtaining an already generated trajectory.
+Tools for obtaining pregenerated input files
+(trajectory, .las data, path to Vista scenes)
+
+parse_cmdline_args() should be called before any of the
+other methods.
 """
 
 # TODO For visualize_scene.py, sensorpoints.py, vistalocal_to_global.py,
@@ -78,6 +86,7 @@ class Trajectory:
     def setUpwards(self, upwards: np.ndarray) -> None:
         self.__upwards = upwards
 
+
 class LasPointCloud:
     """
     Container class for the .las file. Cuts down on unused fields from the
@@ -105,8 +114,8 @@ class LasPointCloud:
         self.__lasfilename = lasfilename
 
     pass
-    
-    # Getters 
+
+    # Getters
     def getX(self) -> np.ndarray:
         return self.__x
 
@@ -124,41 +133,112 @@ class LasPointCloud:
 
     def getPointSourceID(self) -> np.ndarray:
         return self.__point_source_ID
-    
+
     def getIntensity(self) -> np.ndarray:
         return self.__intensity
 
     def getLasFileName(self) -> str:
         return self.__lasfilename
-    
+
     # Setters (just in case if we want to work with future .las clouds, but these probably shouldn't be used)
     def setX(self, x: np.ndarray) -> None:
         self.__x = x
 
     def setY(self, y: np.ndarray) -> None:
         self.__y = y
-        
+
     def setZ(self, z: np.ndarray) -> None:
         self.__z = z
 
     def setGPSTime(self, gps_time: np.ndarray) -> None:
         self.__gps_time = gps_time
-        
+
     def setScanAngleRank(self, scan_angle_rank: np.ndarray) -> None:
         self.__scan_angle_rank = scan_angle_rank
-        
+
     def setPointSourceID(self, point_source_id: np.ndarray) -> None:
         self.__point_source_ID = point_source_id
-        
+
     def setIntensity(self, intensity: np.ndarray) -> None:
         self.__intensity = intensity
-        
+
     def setLasFileName(self, lasfilename: str) -> None:
         self.__lasfilename = lasfilename
 
     pass
 
 
+class VistaSceneOpener:
+    """
+    Method class to read Vista scenes into memory.
+    In order for Open3D point clouds to be parallelized with, we need to call
+    it through this method class, and convert to tensor.
+    """
+    
+    # Opens one specified point cloud as an ndarray, parallelized
+    def open_scene(self, path2scenes: str, frame: int, res: np.float32) -> np.ndarray:
+        """Reads a specified Vista scene from a path into memory.
+        This is called in the parallelized loop in obtain_scenes().
+
+        Args:
+            path2scenes (str): The path to the folder containing the scenes.
+            frame (int): The frame of the particular scene.
+            res (np.float32): The resolution of the sensor at which the scene was recorded.
+            This should be given in the filename, where scene names are guaranteed to be
+            "output_<FRAME>_<RES>.txt".
+
+        Returns:
+            pcd (np.ndarray): Our point cloud, in ndarray format.
+        """
+
+        scene_name = f"output_{frame}_{res:.2f}.txt"
+        path_to_scene = os.path.join(path2scenes, scene_name)
+
+        # Skip our header, and read only XYZ coordinates
+        df = pd.read_csv(path_to_scene, skiprows=0, usecols=[0, 1, 2])
+        xyz = df.to_numpy() / 1000
+
+        return xyz
+
+    # Opens one specified point cloud as an Open3D tensor, parallelized
+    def open_scene_o3d(
+        self, path2scenes: str, frame: int, res: np.float32
+    ) -> o3d.t.geometry.PointCloud:
+        """Reads a specified Vista scene from a path into memory.
+        This is called in the parallelized loop in obtain_scenes().
+        
+        NOTE: In order to visualize our point clouds using Open3D's Visualizer
+        class, we need to call the .to_legacy() method to convert it back to
+        a visualizable format.
+
+        Args:
+            path2scenes (str): The path to the folder containing the scenes.
+            frame (int): The frame of the particular scene.
+            res (np.float32): The resolution of the sensor at which the scene was recorded.
+            This should be given in the filename, where scene names are guaranteed to be
+            "output_<FRAME>_<RES>.txt".
+
+        Returns:
+            pcd (o3d.t.geometry.PointCloud): Our point cloud, in tensor format.
+        """
+
+        scene_name = f"output_{frame}_{res:.2f}.txt"
+        path_to_scene = os.path.join(path2scenes, scene_name)
+
+        # Skip our header, and read only XYZ coordinates
+        df = pd.read_csv(path_to_scene, skiprows=0, usecols=[0, 1, 2])
+        xyz = df.to_numpy() / 1000
+
+        # Create Open3D point cloud object with tensor values.
+        # For parallelization, outputs must be able to be serialized because Python sucks.
+        pcd = o3d.t.geometry.PointCloud(o3d.core.Device("CPU:0"))
+        pcd.point.positions = o3d.core.Tensor(
+            xyz, o3d.core.float32, o3d.core.Device("CPU:0")
+        )
+
+        return pcd
+
+# Parse our command line arguments
 def parse_cmdline_args() -> argparse.Namespace:
     # use argparse to parse arguments from the command line
     parser = argparse.ArgumentParser()
@@ -175,12 +255,11 @@ def parse_cmdline_args() -> argparse.Namespace:
     parser.add_argument(
         "--scenes", type=str, default=None, help="Path to the Vista output folder"
     )
-    parser.add_argument(
-        "--input", type=str, default=None, help="Path to the .las file"
-    )
+    parser.add_argument("--input", type=str, default=None, help="Path to the .las file")
 
     return parser.parse_args()
 
+# Obtain the trajectory
 def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
     """Obtains a pregenerated trajectory and reads each of them into
     a container class.
@@ -283,7 +362,7 @@ def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
 
     return trajectory
 
-
+# Obtain the path to our scenes
 def obtain_scene_path(args: argparse.Namespace) -> str:
     """Obtains the path to the folder containing all of the outputs
     to the Vista simulator.
@@ -324,14 +403,80 @@ def obtain_scene_path(args: argparse.Namespace) -> str:
             if os.path.isfile(os.path.join(scenes_folderpath, name))
         ]
     )
-    print(
-        f"{num_scenes} scenes were found for the corresponding road section folder."
-    )
+    print(f"{num_scenes} scenes were found for the corresponding road section folder.")
 
     return scenes_folderpath
 
+# Read our scenes into memory
+def obtain_scenes(path2scenes: str, mode: str) -> list:
+    """Reads Vista scenes into memory, either of the form
+    np.ndarray or o3d.t.geometry.PointCloud.
 
-def open_las(args: argparse.Namespace):
+    Args:
+        path2scenes (str): The path to our Vista scenes.
+        mode (str): The mode that we are going to choose:
+         - 'numpy': Read all scenes into np.ndarray. 
+         - 'o3d': Used for visualization, after converting 
+           back to o3d.geometry.PointCloud using the 
+           .to_legacy() method.
+
+    Returns:
+        pcds (list): The list of all the Vista scenes read into memory.
+    """
+    import glob
+    
+    path2scenes_ext = os.path.join(path2scenes, '*.txt')
+    
+    # Get list of filenames within our scenes list
+    # Filenames are guaranteed to be of the format "output_FRAME_RES.txt"
+    filenames = [os.path.basename(abs_path) for abs_path in glob.glob(path2scenes_ext)]
+    
+    # Obtain sensor resolution
+    res = np.float32(
+            float(os.path.splitext(
+                (filenames[0].split("_")[-1])   
+            )[0])
+        )
+    
+    # For offsetting frame indexing in case if we are working with padded output
+    # Output should usually be padded anyways
+    offset = int(min(filenames, key=lambda x: int((x.split('_'))[1])).split('_')[1])
+
+    # Read each of the scenes into memory in parallel
+    import joblib
+    from joblib import Parallel, delayed
+    
+    cores = min((joblib.cpu_count() - 1), len(filenames))
+
+    # Create our opener object (for inputs/outputs to be serializable)
+    # Scenes will be read into memory either as np.ndarray OR o3d.t.geometry.PointCloud
+    # (see VistaSceneOpener's methods)
+    opener = VistaSceneOpener()
+    
+    # Define the arguments that will be ran upon in parallel
+    args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
+    
+    # Select the mode at which we will read our point clouds
+    if mode == 'numpy':
+        method = opener.open_scene
+    elif mode == 'o3d':
+        method = opener.open_scene_o3d
+    else:
+        raise(NameError("Invalid mode!"))
+    
+    pcds = Parallel(n_jobs=cores, backend='loky')( # Switched to loky backend to maybe suppress errors?
+        delayed(method)(arg_path2scenes, arg_frame, arg_res)
+        for arg_path2scenes, arg_frame, arg_res in tqdm(args, 
+                                                        total=len(filenames), 
+                                                        desc=f"Reading scenes to memory in parallel, using {cores} processes")
+        )
+
+    print(f"\n{len(pcds)} scenes were read to memory.")
+    
+    return pcds
+
+# Open our .las point cloud
+def open_las(args: argparse.Namespace) -> LasPointCloud:
     """
     Opens a .las file when prompted to do so. Can force a predetermined filename
     (default called as None for manual input)
@@ -347,7 +492,7 @@ def open_las(args: argparse.Namespace):
         arg_input = args.input
     except AttributeError:
         arg_input = None
-    
+
     if arg_input == None:
         # Manually obtain file via UI
         Tk().withdraw()
