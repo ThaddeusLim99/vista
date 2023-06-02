@@ -168,13 +168,102 @@ class LasPointCloud:
     pass
 
 
+class SensorConfig:
+    """
+    Container class for the sensor configuration.
+    """
+
+    def __init__(
+        self,
+        numberSensors: int,
+        horizAngRes: np.float32,
+        verticAngRes: np.float32,
+        e_low: np.float32,
+        e_high: np.float32,
+        a_low: np.float32,
+        a_high: np.float32,
+        r_low: np.float32,
+        r_high: np.float32,
+    ):
+        self.__numberSensors = numberSensors
+        self.__horizAngRes = horizAngRes
+        self.__verticAngRes = verticAngRes
+        self.__e_low = e_low
+        self.__e_high = e_high
+        self.__a_low = a_low
+        self.__a_high = a_high
+        self.__r_low = r_low
+        self.__r_high = r_high
+
+    pass
+
+    sensor_config_filename = None
+
+    # We shouldn't need setters, let alone getters since we are
+    # creating only one container object, but I did it just in case.
+    def getNumberSensors(self) -> int:
+        return self.__numberSensors
+
+    def getHorizAngRes(self) -> np.float32:
+        return self.__horizAngRes
+
+    def getVerticAngRes(self) -> np.float32:
+        return self.__verticAngRes
+
+    def getELow(self) -> np.float32:
+        return self.__e_low
+
+    def getEHigh(self) -> np.float32:
+        return self.__e_high
+
+    def getALow(self) -> np.float32:
+        return self.__a_low
+
+    def getAHigh(self) -> np.float32:
+        return self.__a_high
+
+    def getRLow(self) -> np.float32:
+        return self.__r_low
+
+    def getRHigh(self) -> np.float32:
+        return self.__r_high
+
+    # Setters
+    def setNumberSensors(self, numberSensors: int) -> None:
+        self.__numberSensors = numberSensors
+
+    def setHorizAngRes(self, horizAngRes: np.float32) -> None:
+        self.__horizAngRes = horizAngRes
+
+    def setVerticAngRes(self, verticAngRes: np.float32) -> None:
+        self.__verticAngRes = verticAngRes
+
+    def setELow(self, e_low: np.float32) -> None:
+        self.__e_low = e_low
+
+    def setEHigh(self, e_high: np.float32) -> None:
+        self.__e_high = e_high
+
+    def setALow(self, a_low: np.float32) -> None:
+        self.__a_low = a_low
+
+    def setAHigh(self, a_high: np.float32) -> None:
+        self.__a_high = a_high
+
+    def setRLow(self, r_low: np.float32) -> None:
+        self.__r_low = r_low
+
+    def setRHigh(self, r_high: np.float32) -> None:
+        self.__r_high = r_high
+
+
 class VistaSceneOpener:
     """
     Method class to read Vista scenes into memory.
     In order for Open3D point clouds to be parallelized with, we need to call
     it through this method class, and convert to tensor.
     """
-    
+
     # Opens one specified point cloud as an ndarray, parallelized
     def open_scene(self, path2scenes: str, frame: int, res: np.float32) -> np.ndarray:
         """Reads a specified Vista scene from a path into memory.
@@ -206,7 +295,7 @@ class VistaSceneOpener:
     ) -> o3d.t.geometry.PointCloud:
         """Reads a specified Vista scene from a path into memory.
         This is called in the parallelized loop in obtain_scenes().
-        
+
         NOTE: In order to visualize our point clouds using Open3D's Visualizer
         class, we need to call the .to_legacy() method to convert it back to
         a visualizable format.
@@ -238,6 +327,7 @@ class VistaSceneOpener:
 
         return pcd
 
+
 # Parse our command line arguments
 def parse_cmdline_args() -> argparse.Namespace:
     # use argparse to parse arguments from the command line
@@ -258,6 +348,7 @@ def parse_cmdline_args() -> argparse.Namespace:
     parser.add_argument("--input", type=str, default=None, help="Path to the .las file")
 
     return parser.parse_args()
+
 
 # Obtain the trajectory
 def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
@@ -362,6 +453,7 @@ def obtain_trajectory_details(args: argparse.Namespace) -> Trajectory:
 
     return trajectory
 
+
 # Obtain the path to our scenes
 def obtain_scene_path(args: argparse.Namespace) -> str:
     """Obtains the path to the folder containing all of the outputs
@@ -407,6 +499,7 @@ def obtain_scene_path(args: argparse.Namespace) -> str:
 
     return scenes_folderpath
 
+
 # Read our scenes into memory
 def obtain_scenes(path2scenes: str, mode: str) -> list:
     """Reads Vista scenes into memory, either of the form
@@ -415,65 +508,128 @@ def obtain_scenes(path2scenes: str, mode: str) -> list:
     Args:
         path2scenes (str): The path to our Vista scenes.
         mode (str): The mode that we are going to choose:
-         - 'numpy': Read all scenes into np.ndarray. 
-         - 'o3d': Used for visualization, after converting 
-           back to o3d.geometry.PointCloud using the 
+         - 'numpy': Read all scenes into np.ndarray.
+         - 'o3d': Used for visualization, after converting
+           back to o3d.geometry.PointCloud using the
            .to_legacy() method.
 
     Returns:
         pcds (list): The list of all the Vista scenes read into memory.
     """
     import glob
-    
-    path2scenes_ext = os.path.join(path2scenes, '*.txt')
-    
+
+    path2scenes_ext = os.path.join(path2scenes, "*.txt")
+
     # Get list of filenames within our scenes list
     # Filenames are guaranteed to be of the format "output_FRAME_RES.txt"
     filenames = [os.path.basename(abs_path) for abs_path in glob.glob(path2scenes_ext)]
-    
+
     # Obtain sensor resolution
-    res = np.float32(
-            float(os.path.splitext(
-                (filenames[0].split("_")[-1])   
-            )[0])
-        )
-    
+    res = np.float32(float(os.path.splitext((filenames[0].split("_")[-1]))[0]))
+
     # For offsetting frame indexing in case if we are working with padded output
     # Output should usually be padded anyways
-    offset = int(min(filenames, key=lambda x: int((x.split('_'))[1])).split('_')[1])
+    offset = int(min(filenames, key=lambda x: int((x.split("_"))[1])).split("_")[1])
 
     # Read each of the scenes into memory in parallel
     import joblib
     from joblib import Parallel, delayed
-    
+
     cores = min((joblib.cpu_count() - 1), len(filenames))
 
     # Create our opener object (for inputs/outputs to be serializable)
     # Scenes will be read into memory either as np.ndarray OR o3d.t.geometry.PointCloud
     # (see VistaSceneOpener's methods)
     opener = VistaSceneOpener()
-    
+
     # Define the arguments that will be ran upon in parallel
-    args = [(path2scenes, frame+offset, res) for frame in range(len(filenames))]
-    
+    args = [(path2scenes, frame + offset, res) for frame in range(len(filenames))]
+
     # Select the mode at which we will read our point clouds
-    if mode == 'numpy':
+    if mode == "numpy":
         method = opener.open_scene
-    elif mode == 'o3d':
+    elif mode == "o3d":
         method = opener.open_scene_o3d
     else:
-        raise(NameError("Invalid mode!"))
-    
-    pcds = Parallel(n_jobs=cores, backend='loky')( # Switched to loky backend to maybe suppress errors?
+        raise (NameError("Invalid mode!"))
+
+    pcds = Parallel(
+        n_jobs=cores, backend="loky"
+    )(  # Switched to loky backend to maybe suppress errors?
         delayed(method)(arg_path2scenes, arg_frame, arg_res)
-        for arg_path2scenes, arg_frame, arg_res in tqdm(args, 
-                                                        total=len(filenames), 
-                                                        desc=f"Reading scenes to memory in parallel, using {cores} processes")
+        for arg_path2scenes, arg_frame, arg_res in tqdm(
+            args,
+            total=len(filenames),
+            desc=f"Reading scenes to memory in parallel, using {cores} processes",
         )
+    )
 
     print(f"\n{len(pcds)} scenes were read to memory.")
-    
+
     return pcds
+
+
+def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
+    """Opens the sensor configuration file from command-line argument or
+    through UI.
+
+    Args:
+        args (argparse.Namespace): Contains the command-line arguments.
+
+    Returns:
+        cfg (SensorConfig): Container class containing the sensor configuration
+        parameters.
+    """
+    try:
+        arg_config = args.config
+    except AttributeError:
+        arg_config = None
+
+        import json
+
+    # read the sensor config file and save the params
+    if arg_config == None:
+        # Manually get sensor configuration file
+        Tk().withdraw()
+        sensorcon_filepath = tk.filedialog.askopenfilename(
+            filetypes=[(".json files", "*.json"), ("All files", "*")],
+            initialdir=os.path.join(ROOT2, "sensors/"),
+            title="Please select the sensor configuration file",
+        )
+        print(f"\nYou have chosen to open the sensor file:\n{sensorcon_filepath}")
+
+    else:
+        sensorcon_filepath = args.config
+        print(f"\nUsing predefined sensor file: {os.path.basename(sensorcon_filepath)}")
+
+    # tStart = perf_counter()
+
+    with open(sensorcon_filepath, "r") as f:
+        data = f.read()
+
+    sensor_cfg_dict = json.loads(data)
+
+    # Create container object
+    cfg = SensorConfig(
+        sensor_cfg_dict["numberSensors"],
+        sensor_cfg_dict["horizAngRes"],
+        sensor_cfg_dict["verticAngRes"],
+        sensor_cfg_dict["e_low"],
+        sensor_cfg_dict["e_high"],
+        sensor_cfg_dict["a_low"],
+        sensor_cfg_dict["a_high"],
+        sensor_cfg_dict["r_low"],
+        sensor_cfg_dict["r_high"],
+    )
+
+    cfg.sensor_config_filename = os.path.basename(sensorcon_filepath)
+
+    # tStop = perf_counter()
+
+    # print(f"Loading took {(tStop-tStart):.2f}s.")
+
+    return cfg
+
 
 # Open our .las point cloud
 def open_las(args: argparse.Namespace) -> LasPointCloud:
