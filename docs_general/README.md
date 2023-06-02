@@ -19,7 +19,7 @@ We can simulate the vehicle driving through the road through generating a trajec
 
 #### Segmentation
 
-At a road point, we will segment the entire point cloud down to the sensor FOV:
+At a road point, we will segment the entire point cloud down to the sensor FOV (points 'too far' from the sensor are ignored):
 ![Sensor FOV at 450m](images/velodyne_alpha_128_at450m.png "The point cloud (in grey) within the FOV range (points in white) is then segmented")
 
 - The sensor parameters here are from the ``velodyne_alpha_128.json`` sensor
@@ -29,7 +29,7 @@ For this segmentation, we will perform a rigid body transformation on the point 
 
 #### Occlusion
 
-We use the Vista simulator to perform occlusion on our segmented point cloud. Occlusion is basically what points the sensor actually sees from its POV; points that are hidden behind points are occluded.
+We use the Vista simulator to perform occlusion on our segmented point cloud. Occlusion is basically what points the sensor actually sees from its POV; points that are hidden behind points are occluded. See [here](Occlusion.md) for details about how Vista handles occlusions.
 
 For example, think of a light post, and a world as a bunch of XYZ points. If you were to look at the light post, you won't be able to see anything behind the light post.
 
@@ -55,4 +55,6 @@ After obtaining all of our output scenes for each road point, we can finally per
 
 </details>
 
-<br>We want to analyze the data rate required to process the data seen by the sensor as the simulated AV moves through the road section. In order to do so, we need to voxelize each output scene, and perform our necessary calculations as needed. See [here]() for more information regarding the data rate calculations.
+<br>We want to analyze the data rate required to process the data seen by the sensor as the simulated AV moves through the road section; bascially obtain the data rate at each scene.
+
+In order to do so, we need to voxelize each output scene, and perform our necessary calculations as needed. See [here](Analysis.md) for more information regarding the data rate calculations.
