@@ -173,7 +173,7 @@ def render_sensor_fov(
     geometry.colors = o3d.utility.Vector3dVector(np.ones((aligned_fov_points[0].shape[0],3),dtype=np.float64)) # [0] temp for single_sensor
     
     # Set the view at the center
-    set_visualizer_pov('center')
+    set_visualizer_pov('follow')
     
     # Then update the visualizer
     if frame == 0+offset:
@@ -462,10 +462,10 @@ def main():
   frame_offset = check_for_padded(path2scenes)
   
   # Runs and captures the sensor FOV on the road
-  # run_sensor_fov(road=road, cfg=cfg, traj=traj, temp_dir=temp_dir, screen_wh=screen_wh, offset=offset)
+  # run_sensor_fov(road=road, cfg=cfg, traj=traj, temp_dir=temp_dir, screen_wh=screen_wh, offset=frame_offset)
   
   # Runs and captures the Vista scenes
-  run_vista(path2scenes, temp_dir, screen_wh)
+  # run_vista(path2scenes, temp_dir, screen_wh)
   #import replay_scenes
   #slist = obtain_scenes(path2scenes)
   #_,_,_ = replay_scenes.visualize_replay(path2scenes=path2scenes, scenes_list=slist, vehicle_speed=100, point_density=1)
