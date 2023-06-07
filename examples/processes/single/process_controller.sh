@@ -2,7 +2,7 @@
 
 ### USER INPUT HERE ###
 processes=6
-LASFILE="03210N_C1R1_12000_16000cut_y_trimmed.las"
+LASFILE="hz03210W_C1L1_24000_20000-f_y_trimmed.las"
 JSONFILE=velodyne_alpha_128.json # Do not put quotes here
 observer_height=1.8
 PAD_OUTPUTS=true
@@ -84,8 +84,18 @@ VISTAOUTPATH="~/Desktop/vista/examples/vista_traces/lidar_output/${LASFILE%.*}_r
 end_time=`date +%s`
 echo "Vista simulation took $((${end_time}-${start_time})) seconds."
 
-echo "Opening MATLAB and generating graphs..."
-matlab -sd "~/Desktop/sensor-voxelization-cst/DataRate_fromCH" -r "data_rate_vista_automated('${SENSORPATH}', '${VISTAOUTPATH}', '${PAD_OUTPUTS}', true)"
+# Check if all Vista scenes within our range were generated
+total_outputs=`ls "examples/vista_traces/lidar_output/${LASFILE%.*}_resolution=${RESOLUTION}" | wc -l`
+expected_outputs=$(( $ENDFRAME - $STARTFRAME ))
+if [[ $total_outputs -ne $expected_outputs ]]
+then
+    echo "Expected ${expected_outputs} outputs! (got ${total_outputs})"
+    # exit 1
+    # Find a way to generate the missing outputs
+else
+    echo "Opening MATLAB and generating graphs..."
+    matlab -sd "~/Desktop/sensor-voxelization-cst/DataRate_fromCH" -r "data_rate_vista_automated('${SENSORPATH}', '${VISTAOUTPATH}', 1, 1)"
+fi
 
 #FOR DEBUGGING MATLAB FUNCTION, USING ALREADY GENERATED VISTA OUTPUTS
 # NOTE THAT YOU MAY HAVE TO EDIT THE OUTPUT FOLDER

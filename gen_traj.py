@@ -640,7 +640,12 @@ def row_upper_bound(total_matrix, value, column):
     while left < right - 1:
         n = np.floor((left + right) / 2).astype(int)
 
-        if total_matrix[n, column] <= value:
+        try:
+            queryval = total_matrix[n, column]
+        except IndexError:
+            queryval = total_matrix[n-1, column]
+        
+        if queryval <= value:
             left = n
         else:
             right = n
