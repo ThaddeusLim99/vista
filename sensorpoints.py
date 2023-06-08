@@ -10,7 +10,7 @@ from pathlib import Path
 from time import perf_counter
 
 import gen_traj
-import trajectory_tools # For obtaining pregenerated trajectories
+import file_tools # For obtaining pregenerated trajectories
 
 '''
 Sensor points
@@ -100,7 +100,7 @@ def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
       cfg (SensorConfig): Container class containing the sensor configuration
       parameters.
   """
-  print("Opening sensor file!")
+  # print("\nOpening sensor file!")
   # read the sensor config file and save the params
   if args.config == None:
     # Manually get sensor configuration file
@@ -114,13 +114,13 @@ def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
       title = "Please select the sensor configuration file"
 
     )
-    print(f"You have chosen to open the sensor file:\n{sensorcon_filepath}")
+    print(f"\nYou have chosen to open the sensor file:\n{sensorcon_filepath}")
     
   else:
     sensorcon_filepath = args.config
-    print(f"Using predefined sensor file: {os.path.basename(sensorcon_filepath)}")
+    print(f"\nUsing predefined sensor file: {os.path.basename(sensorcon_filepath)}")
   
-  tStart = perf_counter()
+  #tStart = perf_counter()
   
   with open(sensorcon_filepath, 'r') as f:
     data = f.read()
@@ -142,9 +142,9 @@ def open_sensor_config_file(args: argparse.Namespace) -> SensorConfig:
   
   cfg.sensor_config_filename = os.path.basename(sensorcon_filepath)
 
-  tStop = perf_counter()
+  #tStop = perf_counter()
 
-  print(f"Loading took {(tStop-tStart):.2f}s.")
+  #print(f"Loading took {(tStop-tStart):.2f}s.")
 
   return cfg
 
@@ -163,8 +163,8 @@ def generate_sensor_points(sensor_config: SensorConfig) -> list:
       np.ndarray that make up the FOV of each sensor.
   """
 
-  print(f"\nGenerating FOV points for {sensor_config.getNumberSensors()} sensor(s)!")
-  tStart = perf_counter()
+  #print(f"\nGenerating FOV points for {sensor_config.getNumberSensors()} sensor(s)!")
+  #tStart = perf_counter()
 
   # Override the resolution
   verticalRes = 2
@@ -288,8 +288,8 @@ def generate_sensor_points(sensor_config: SensorConfig) -> list:
     out = np.concatenate((fronts, left_side, right_side, top_side, bot_side), axis=0)
     points.append(out) # Multisensor configuration
     
-    tStop = perf_counter()
-    print(f"FOV point generation took {(tStop-tStart):.2f}s.")
+    #tStop = perf_counter()
+    #print(f"FOV point generation took {(tStop-tStart):.2f}s.")
   
   return points
 
@@ -399,7 +399,7 @@ def obtain_trajectory(args: argparse.Namespace) -> Trajectory:
   return trajectory
 
 # Converted from make_sensor_las_file.m
-def align_sensor_points(fov_points: list, trajectory: Trajectory, observer_point: int) -> list:
+def align_sensor_points(fov_points: list, trajectory: Trajectory, observer_point: int) -> list or int:
   """Aligns sensor points to the vehicle's orientation and position 
   at the provided scene number. Output will be in global coordinates
   such that it can be easily superimposed onto the road section itself.
@@ -424,8 +424,8 @@ def align_sensor_points(fov_points: list, trajectory: Trajectory, observer_point
     raise ValueError("Observer point is out of range!")
 
 
-  print("\nAligning FOV points!")
-  tStart = perf_counter()
+  #print("\nAligning FOV points!")
+  #tStart = perf_counter()
   
   # Rotation matrices are formed as this in the first two dimensions:
   # (note that this is a 2D matrix, the third dimension is the ith rotation matrix)
@@ -458,12 +458,12 @@ def align_sensor_points(fov_points: list, trajectory: Trajectory, observer_point
       )
     transformed_points.append(out)
   
-  tStop = perf_counter()
-  print(f"FOV point alignment took {(tStop-tStart):.2f}s.")
+  #tStop = perf_counter()
+  #print(f"FOV point alignment took {(tStop-tStart):.2f}s.")
   
-  return transformed_points
+  return transformed_points, observer_point
 
-def points_to_las(all_points: list, cfg: SensorConfig, args: argparse.Namespace) -> None:
+def points_to_las(all_points: list, cfg: SensorConfig, observer_point: int, args: argparse.Namespace) -> None:
   """Writes our XYZ points to a .las file.
 
   Args:
@@ -506,7 +506,8 @@ def points_to_las(all_points: list, cfg: SensorConfig, args: argparse.Namespace)
     las.b = np.ones((sensorpoints.shape[0], 1))*blue
     
     # outpath_sensor = outpath / os.path.splitext(cfg.sensor_config_filename)[0]
-    outpath_sensor = f"{outpath}/{os.path.splitext(cfg.sensor_config_filename)[0]}_frame{args.observer_point}"
+    # point_number = args.observer_point if args.observer_point != None else observer_point
+    outpath_sensor = f"{outpath}/{os.path.splitext(cfg.sensor_config_filename)[0]}_frame{observer_point}"
     if not os.path.exists(outpath_sensor):
       os.makedirs(outpath_sensor);
 
@@ -540,8 +541,8 @@ def main():
   trajectory = obtain_trajectory(args) # locally defined, modified from trajectory_tools
   # trajectory = trajectory_tools.obtain_trajectory_details(args)
   fov_points = generate_sensor_points(config)
-  aligned_fov_points = align_sensor_points(fov_points, trajectory, args.observer_point)
-  points_to_las(aligned_fov_points, config, args)
+  aligned_fov_points, observer_point = align_sensor_points(fov_points, trajectory, args.observer_point)
+  points_to_las(aligned_fov_points, config, observer_point, args)
 
   return
 

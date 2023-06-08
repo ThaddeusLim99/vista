@@ -309,12 +309,16 @@ class LidarSynthesis:
         avg_depth = torch.sum(neighbor_depth, axis=1) / torch.sum(
             valid.to(torch.float), axis=1
         )
-
+        # median_depth = torch.median(neighbor_depth, axis=1).values 
+        # NOTE I used .values here because at line 321 there is a type mismatch 
+        # (median_depth: torch.return_types.median vs. Tensor)
+        
         # Estimate if the location is occluded by measuring if its depth
         # greater than its surroundings (i.e. if it is behind its surroundings)
         # Some amound of slack can be added here to allow for edge cases.
         my_depth = sparse[coords[:, 0], coords[:, 1]]
         occluded = (my_depth - depth_slack) > avg_depth
+        # occluded = (my_depth - depth_slack) > median_depth
 
         # Return the coordinates in the depth image which are occluded and
         # should be disregarded

@@ -169,7 +169,7 @@ def generate_trajectory(verbose, las_obj, traj):
             window_base_index: int, 
             window_size: int, 
             raw_road_path: np.ndarray
-            ) -> np.ndarray | None:
+            ) -> np.ndarray or None:
         
         """Helper function to remove the outliers from a window of z-coordinates.
         Outliers from the window are recursively removed until the window does not
@@ -448,6 +448,20 @@ def generate_trajectory(verbose, las_obj, traj):
     leftwards = np.cross(upwards, forwards, 1)
     if verbose:
         print(" - Leftward vectors complete.")
+        
+    # Correct the z-component of the forward vector    
+    useCorrectedZ = True
+    if useCorrectedZ:
+        forwards[:, 2] = (
+            -(upwards[:, 0] * forwards[:, 0] + upwards[:, 1] * forwards[:, 1])
+            / upwards[:, 2]
+        )
+
+        magnitude = (
+            forwards[:, 0] ** 2 + forwards[:, 1] ** 2 + forwards[:, 2] ** 2
+        ) ** (1 / 2)
+
+        forwards[:, 2] /= magnitude
 
     if verbose:
         tStop = perf_counter()
@@ -626,7 +640,12 @@ def row_upper_bound(total_matrix, value, column):
     while left < right - 1:
         n = np.floor((left + right) / 2).astype(int)
 
-        if total_matrix[n, column] <= value:
+        try:
+            queryval = total_matrix[n, column]
+        except IndexError:
+            queryval = total_matrix[n-1, column]
+        
+        if queryval <= value:
             left = n
         else:
             right = n

@@ -2,7 +2,7 @@
 
 ### USER INPUT HERE ###
 processes=6
-LASFILE="01617W_L1L2_L1L3_08000_04000.las"
+LASFILE="hz03210W_C1L1_24000_20000-f_y_trimmed.las"
 JSONFILE=velodyne_alpha_128.json # Do not put quotes here
 observer_height=1.8
 PAD_OUTPUTS=true
@@ -15,6 +15,7 @@ PITCH_MAX=15
 YAW_MIN=-180
 YAW_MAX=180
 RANGE=245
+CULLING_R=2
 
 # Comment this out if you want to generate a trajectory or if you already have a pregenerated trajectory
 python gen_traj.py --input examples/vista_traces/${LASFILE} --observer_height ${observer_height}
@@ -45,6 +46,7 @@ export PITCH_MAX
 export YAW_MIN
 export YAW_MAX
 export RANGE
+export CULLING_R
 
 export LASFILE
 export STARTFRAME
@@ -82,9 +84,19 @@ VISTAOUTPATH="~/Desktop/vista/examples/vista_traces/lidar_output/${LASFILE%.*}_r
 end_time=`date +%s`
 echo "Vista simulation took $((${end_time}-${start_time})) seconds."
 
-echo "Opening MATLAB and generating graphs..."
-matlab -sd "~/Desktop/sensor-voxelization-cst/DataRate_fromCH" -r "data_rate_vista_automated('${SENSORPATH}', '${VISTAOUTPATH}', '${PAD_OUTPUTS}')"
+# Check if all Vista scenes within our range were generated
+total_outputs=`ls "examples/vista_traces/lidar_output/${LASFILE%.*}_resolution=${RESOLUTION}" | wc -l`
+expected_outputs=$(( $ENDFRAME - $STARTFRAME ))
+if [[ $total_outputs -ne $expected_outputs ]]
+then
+    echo "Expected ${expected_outputs} outputs! (got ${total_outputs})"
+    # exit 1
+    # Find a way to generate the missing outputs
+else
+    echo "Opening MATLAB and generating graphs..."
+    matlab -sd "~/Desktop/sensor-voxelization-cst/DataRate_fromCH" -r "data_rate_vista_automated('${SENSORPATH}', '${VISTAOUTPATH}', 1, 1)"
+fi
 
 #FOR DEBUGGING MATLAB FUNCTION, USING ALREADY GENERATED VISTA OUTPUTS
 # NOTE THAT YOU MAY HAVE TO EDIT THE OUTPUT FOLDER
-# data_rate_vista_automated("/home/mohamed/Desktop/sensor-voxelization-cst/DataRate_fromCH/sensors/velodyne_alpha_128.json", "~/Desktop/vista/examples/vista_traces/lidar_output/01617W_L1L2_L1L3_08000_04000_resolution=0.11", true)
+# data_rate_vista_automated("/home/mohamed/Desktop/sensor-voxelization-cst/DataRate_fromCH/sensors/velodyne_alpha_128.json", "~/Desktop/vista/examples/vista_traces/lidar_output/03210N_C1R1_16000_20000_y_trimmed_resolution=0.11", true, true)

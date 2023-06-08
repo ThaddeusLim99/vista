@@ -120,3 +120,9 @@ ENV/
 
 # IDE settings
 .vscode/
+
+# Test folder files and whatnot
+test_files/
+
+# Trimmed files
+trimmed/
