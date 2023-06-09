@@ -450,7 +450,7 @@ def data_rate_vista_automated(
         
             plt.show(block=False)
         else:
-            fig1 = plt.figure("Volume method")
+            fig1 = plt.figure("Volume method (data ratio)")
             fig1.suptitle("Data ratio of volumetric voxelization method", fontsize=12)
             plt.plot(outmatrix_volume[:, 0], outmatrix_volume[:, 1], '-r')
             plt.xlabel("distance (m)")
@@ -466,7 +466,7 @@ def data_rate_vista_automated(
             
             plt.show(block=False)
             
-            fig3 = plt.figure("Volume method")
+            fig3 = plt.figure("Volume method (delta ratio)")
             fig3.suptitle("Delta ratio of volumetric voxelization method", fontsize=12)
             plt.plot(outmatrix_volume2[:, 0], outmatrix_volume2[:, 1], '-b')
             plt.xlabel("distance (m)")
@@ -518,13 +518,17 @@ def data_rate_vista_automated(
             plt.xlabel("distance (m)")
             plt.ylabel("Atomic norm Data rate")
             
+            plt.show(block=False)
+            
             fig5 = plt.figure("Simple method datarate")
             fig5.suptitle("Data rate of simple voxelization method", fontsize=12)
             plt.plot(outmatrix_count[:, 0], an_data_rate2[:, 0], '-b')
             plt.xlabel("distance (m)")
             plt.ylabel("Atomic norm Data rate")        
             
-            plt.show(block=False)            
+            plt.show(block=False)   
+            
+    plt.show() 
 
 def main():
     args = file_tools.parse_cmdline_args()

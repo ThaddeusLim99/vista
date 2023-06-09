@@ -22,6 +22,11 @@ def main(args):
 
     las = laspy.read(args.input)
     # las_offsets = las.header.offsets
+    
+    try:
+        run_occlusions = args.occlusion
+    except AttributeError:
+        run_occlusions = False
 
     filename_cut = os.path.splitext(os.path.basename(args.input))[
         0
@@ -139,19 +144,44 @@ def main(args):
         xyz.double().T,
     ).T
 
-    # Sensor at 1.2 meter above
+    # Translate by observer height (in mm)
     xyz[:, 2] -= 1800
-    xyz = xyz.cpu().numpy()
-    # Debug: write segmented point cloud in local coordinates
-    #pd.DataFrame(xyz).to_csv(
-    #    f"./examples/vista_traces/lidar_3d.csv", header=False, index=False
-    #)
     
-    if args.occlusion:
+    # Cull points by angle of sensor if we are not running occlusion
+    if not run_occlusions:
+        yaw_min = args.yaw_min
+        yaw_max = args.yaw_max
+        pitch_min = args.pitch_min
+        pitch_max = args.pitch_max
+        
+        yaws = torch.atan2(xyz[:,1], xyz[:,0])*(180/np.pi)
+        pitches = torch.atan(xyz[:,2]/(torch.linalg.norm(xyz[:,0:2], dim=1)))*(180/np.pi)
+    
+        yaw_mask = (yaws >= yaw_min) & (yaws <= yaw_max)
+        pitch_mask = (pitches >= pitch_min) & (pitches <= pitch_max)
+        filtered_mask = yaw_mask & pitch_mask
+        
+        xyz = xyz[filtered_mask]
+        xyz /= 1000 # Convert back to mm for less file size
+
+    xyz = xyz.cpu().numpy() 
+    
+    # Write unoccluded output
+    if not run_occlusions:
+        output_folder = f"./examples/vista_traces/lidar_output/{os.path.splitext(args.filename)[0]}_unoccluded/"
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+        output_path = os.path.join(output_folder, f"output_{i}.txt")
+        
+        output_path = "".join(output_path.split(" "))
+
         pd.DataFrame(xyz).to_csv(
-            f"./examples/vista_traces/lidar_3d.csv", header=False, index=False
-        )        
-    else:   
+            output_path, header=False, index=False
+        ) 
+       
+    else:
+        # Write intermediate file for Vista simulation
         with h5py.File(
             f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
         ) as f:
@@ -168,11 +198,39 @@ def main(args):
 if __name__ == "__main__":
     # Parse Arguments
     parser = argparse.ArgumentParser()
+    
     parser.add_argument("--input", type=str, help="Path to .las file to convert to .h5")
     parser.add_argument("--frame", type=int, help="Frame number")
     parser.add_argument("--range", type=int, help="Range distance in metres")
     parser.add_argument("--process", type=int, help="Process number")
-    parser.add_argument("--occlusion", typle=bool, help="option to include occlusion or not")
+    parser.add_argument("--occlusion", action="store_true", help="option to include occlusion or not")
+    parser.add_argument("--filename", type=str, help="Filename of the las file")
+    
+    parser.add_argument(
+        "--yaw-min",
+        type=float,
+        default=-180,
+        help="Minimum yaw angle",
+    )
+    parser.add_argument(
+        "--yaw-max",
+        type=float,
+        default=180,
+        help="Maximum yaw angle",
+    )
+    parser.add_argument(
+        "--pitch-min",
+        type=float,
+        default=-21,
+        help="Minimum pitch angle",
+    )
+    parser.add_argument(
+        "--pitch-max",
+        type=float,
+        default=19,
+        help="Maximum pitch angle",
+    )
+
     args = parser.parse_args()
 
     main(args)
