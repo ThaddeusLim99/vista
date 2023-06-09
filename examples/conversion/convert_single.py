@@ -146,18 +146,23 @@ def main(args):
     #pd.DataFrame(xyz).to_csv(
     #    f"./examples/vista_traces/lidar_3d.csv", header=False, index=False
     #)
+    
+    if args.occlusion:
+        pd.DataFrame(xyz).to_csv(
+            f"./examples/vista_traces/lidar_3d.csv", header=False, index=False
+        )        
+    else:   
+        with h5py.File(
+            f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
+        ) as f:
+            f["timestamp"] = [[0], [0.1], [0.2]]
+            f["xyz"] = [xyz]
+            f["intensity"] = [las.intensity[indices]]
 
-    with h5py.File(
-        f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "w"
-    ) as f:
-        f["timestamp"] = [[0], [0.1], [0.2]]
-        f["xyz"] = [xyz]
-        f["intensity"] = [las.intensity[indices]]
-
-    f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
-    print(f2["timestamp"])
-    print(f2["xyz"])
-    print(f2["intensity"])
+        f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
+        print(f2["timestamp"])
+        print(f2["xyz"])
+        print(f2["intensity"])
 
 
 if __name__ == "__main__":
@@ -167,6 +172,7 @@ if __name__ == "__main__":
     parser.add_argument("--frame", type=int, help="Frame number")
     parser.add_argument("--range", type=int, help="Range distance in metres")
     parser.add_argument("--process", type=int, help="Process number")
+    parser.add_argument("--occlusion", typle=bool, help="option to include occlusion or not")
     args = parser.parse_args()
 
     main(args)
