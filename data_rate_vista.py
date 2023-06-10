@@ -7,6 +7,7 @@ import numpy as np
 import multiprocessing as mp
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import copy
 
 import file_tools
 
@@ -20,6 +21,14 @@ def get_first_number(substring: str):
     else:
         return None
 
+#gets the substring from the end of a string till the first forward
+#or backwards slash encountered
+def get_folder(string: str):
+    match = re.search(r"([\\/])([^\\/]+)$", string)
+    if match:
+        result = match.group(2)
+        return result
+    return None
 
 def multiprocessed_vol_funct(input_tuple: tuple):
     """Perfroms the volumetric method for a single scene.
@@ -47,7 +56,9 @@ def multiprocessed_vol_funct(input_tuple: tuple):
     pc = np.divide(file,1000) # convert from mm to meters
     inputExtended = (pc,voxel_rsize, voxel_asize, voxel_esize, data,i)
 
-    return i,[((numFrame) * point_density), (occupancy_volume(inputExtended)/max_volume)]
+    occ = occupancy_volume(inputExtended)/max_volume
+
+    return i,[((numFrame) * point_density), occ]
 
 
 def multiprocessed_count_funct(input_tuple: tuple):
@@ -310,169 +321,171 @@ def data_rate_vista_automated(
     
     point_density = 1
     
-    file_regex = "output_*.txt"
-    path = os.path.join(vistaoutput_path, file_regex)
-    
-    total_scenes = len(glob.glob(path))
-    
-    #total_scenes is how many scenes there are in a folder
-    #observers is how many scenes we intend to analyse
-    if enable_resolution:
-        #integer divison to round down so that you wont get extra observers that might crash the program
-        observers = total_scenes // resolution  
-    else:
-        observers = total_scenes 
-    
-    #print(observers)
-    
-    beginning_i = math.floor(padding_size / point_density)
-    last_i = math.ceil(observers - (padding_size / point_density))
-    
     ## Getting volume of the max sensor range
     # Doing so for data rate calculations
     max_volume = (1/3)*(math.pow(data["r_high"],3) - math.pow(data["r_low"],3))\
         *(np.cos(np.deg2rad(data["e_low"]))-np.cos(np.deg2rad(data["e_high"])))\
             *(np.deg2rad(data["a_high"])-np.deg2rad(data["a_low"]))
+            
+    file_regex = "output_*.txt"
     
-    # Adjust range of calculation if the output data is padded already.
-    if not prepad_output:
-        # Voxelize and calculate delta for all road scenes
-        startframe = 1
-        endframe = observers
-        #total_scenes = observers
-        notice_offset = 0
-    else:
-        # Voxelize and calculate delta for road scenes, with padding
-        startframe = beginning_i
-        endframe = observers + beginning_i
-        #total_scenes = observers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ;
-        notice_offset = beginning_i
+    numScenes = len(vistaoutput_path)
+    
+    path = []
+    total_scenes = []
+    observers = []
+    outmatrix_volume = []
+    outmatrix_count = []
+    
+    for i in range(numScenes):
+        path.append(os.path.join(vistaoutput_path[i], file_regex))
         
-    outmatrix_volume = np.zeros([observers, 2])
+        total_scenes.append(len(glob.glob(path[-1])))
+        
+        #total_scenes is how many scenes there are in a folder
+        #observers is how many scenes we intend to analyse
+        if enable_resolution:
+            #integer divison to round down so that you wont get extra observers that might crash the program
+            observers.append(total_scenes[-1] // resolution)  
+        else:
+            observers.append(total_scenes[-1]) 
+
+        outmatrix_volume.append(np.zeros([observers[-1], 2]))
+        outmatrix_count.append(np.zeros([observers[-1], 2]))
    
     numCores = mp.cpu_count() - 1   
     
-    # Read each of the scenes into memory in parallel, but can be configured to read once every few scenes
-    #find smallest frame number in folder, program assumes smallest frame will be used in the graph analysis
-    #need to find this so that program knows at which index to insert data into outmatrix
-    smallest = math.inf
-    for filename in os.listdir(vistaoutput_path):
-        numFrame = get_first_number(filename)    
-        if smallest > numFrame:
-            smallest = numFrame
-    upperbound = smallest + observers * resolution
-            
-    with mp.Pool(numCores) as p:
-        inputData = [(voxel_rsize, voxel_asize, voxel_esize, data,i\
-                    ,vistaoutput_path,point_density,max_volume) for i in range(smallest, upperbound,resolution)]
-        results = []
-        with tqdm(total=len(inputData), desc="Processing Volume") as pbar:
-            for result in p.imap(multiprocessed_vol_funct, inputData):
-                #result[0] is i in line 119. This subtraction is done so that result[1] can be inserted into
-                #outmatrix_volume at the proper index, which starts from 0, rather than at the variable "smallest"
-                outmatrix_volume[(result[0] - smallest)//resolution] = result[1]
-                results.append(result)
-                pbar.update()
-    
-    outmatrix_count = np.zeros([observers, 2])
-    
-    with mp.Pool(numCores) as p:
-        inputData = [(voxel_rsize, voxel_asize, voxel_esize, data,i\
-                    ,vistaoutput_path,point_density) for i in range(smallest, upperbound,resolution)]
-        results = []
-        with tqdm(total=len(inputData), desc="Processing Count") as pbar:
-            for result in p.imap(multiprocessed_count_funct, inputData):
-                #result[0] is i in line 133. This subtraction is done so that result[1] can be inserted into
-                #outmatrix_count at the proper index, which starts from 0, rather than at the variable "smallest"
-                outmatrix_count[(result[0] - smallest)//resolution] = result[1]
-                results.append(result)
-                pbar.update()
+    for itr in range(numScenes):
+        print('\nWorking on scene: ' + str(vistaoutput_path[itr]))
+        # Read each of the scenes into memory in parallel, but can be configured to read once every few scenes
+        #find smallest frame number in folder, program assumes smallest frame will be used in the graph analysis
+        #need to find this so that program knows at which index to insert data into outmatrix
+        smallest = math.inf
+        for filename in os.listdir(vistaoutput_path[itr]):
+            numFrame = get_first_number(filename)    
+            if smallest > numFrame:
+                smallest = numFrame
+        upperbound = smallest + observers[itr] * resolution
+                
+        with mp.Pool(numCores) as p:
+            inputData = [(voxel_rsize, voxel_asize, voxel_esize, data,i\
+                        ,vistaoutput_path[itr],point_density,max_volume) for i in range(smallest, upperbound,resolution)]
+            results = []
+            with tqdm(total=len(inputData), desc="Processing Volume") as pbar:
+                for result in p.imap(multiprocessed_vol_funct, inputData):
+                    #result[0] is i in line 119. This subtraction is done so that result[1] can be inserted into
+                    #outmatrix_volume at the proper index, which starts from 0, rather than at the variable "smallest"
+                    outmatrix_volume[itr][(result[0] - smallest)//resolution] = result[1]
+                    results.append(result)
+                    pbar.update()
+        
+        with mp.Pool(numCores) as p:
+            inputData = [(voxel_rsize, voxel_asize, voxel_esize, data,i\
+                        ,vistaoutput_path[itr],point_density) for i in range(smallest, upperbound,resolution)]
+            results = []
+            with tqdm(total=len(inputData), desc="Processing Count") as pbar:
+                for result in p.imap(multiprocessed_count_funct, inputData):
+                    #result[0] is i in line 133. This subtraction is done so that result[1] can be inserted into
+                    #outmatrix_count at the proper index, which starts from 0, rather than at the variable "smallest"
+                    outmatrix_count[itr][(result[0] - smallest)//resolution] = result[1]
+                    results.append(result)
+                    pbar.update()
 
     print('\nDone!')
-
-    ## Adding padding to the graph
-    # outmatrix_volume(:, 1) = outmatrix_volume(:, 1)/1000;
-    # outmatrix_count(:, 1) = outmatrix_count(:, 1)/1000;
-
-    # Pad our Vista outputs if we are generating scenes that include the
-    # ends of the road section (i.e., it is not pre-padded)
-    #python indexing for range does not include righthand expression but matlab does
-    #so got to add 1 to all the righthand expressions
-    
-    #PROBABLY DONT NEED THIS ANYMORE
-    '''
-    if not prepad_output:
-        outmatrix_volume = outmatrix_volume[beginning_i:(last_i+1-(beginning_i-1))]
-        outmatrix_count = outmatrix_count[beginning_i:(last_i+1-(beginning_i-1))]
-    else:
-        outmatrix_volume = outmatrix_volume[beginning_i:]
-        outmatrix_count = outmatrix_count[beginning_i:]
-    '''
     
     ## Obtain delta/deltamax graph  
-    outmatrix_volume2 = outmatrix_volume.copy()
-    outmatrix_volume2[:, 1] = outmatrix_volume2[:, 1] / np.max(outmatrix_volume2[:, 1])
+    outmatrix_volume2 = copy.deepcopy(outmatrix_volume)
 
+    for i in range(numScenes):
+        outmatrix_volume2[i][:, 1] = outmatrix_volume2[i][:, 1] / np.max(outmatrix_volume2[i][:, 1])
+
+    complementary_colours = [['-r','-c'],['-g','-m'],['-b','-y']]
+    
     ## Making graph
     if enable_graphical:
         if enable_regression:
+            
             # Need to add main title and axis titles    
             fig1 = plt.figure("Volume method")
             fig1.suptitle("Data ratio of volumetric voxelization method", fontsize=12)
-            plt.plot(outmatrix_volume[:, 0], outmatrix_volume[:, 1], '-r', label=f'Original')
-            poly, residual, _, _, _ = np.polyfit(outmatrix_volume[:, 0], outmatrix_volume[:, 1], deg=regression_power, full=True)
-            plt.plot(outmatrix_volume[:, 0], np.polyval(poly, outmatrix_volume[:, 0]), '-c', label=f'Power {regression_power} Regression')
+            for i in range(numScenes):
+                plt.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
+                    f'{complementary_colours[np.mod(i,3)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                poly, residual, _, _, _ = np.polyfit(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
+                    deg=regression_power, full=True)
+                plt.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
+                    f'{complementary_colours[np.mod(i,3)][1]}',\
+                        label=f'Power {regression_power} Regression: {get_folder(vistaoutput_path[i])}')
             plt.xlabel("distance (m)")
             plt.ylabel("volume ratio (volume of occupied voxel/total volume in sensor)")
             plt.legend()
             
-            plt.show(block=False)
+            #plt.show(block=False)
+            plt.show() 
         
             fig2 = plt.figure("Simple method")
             fig2.suptitle("Data ratio of simple voxelization method", fontsize=12)
-            plt.plot(outmatrix_count[:, 0], outmatrix_count[:, 1], '-g', label=f'Original')
-            poly, residual, _, _, _ = np.polyfit(outmatrix_count[:, 0], outmatrix_count[:, 1], deg=regression_power, full=True)
-            plt.plot(outmatrix_count[:, 0], np.polyval(poly, outmatrix_count[:, 0]), '-m', label=f'Power {regression_power} Regression')
+            for i in range(numScenes):
+                plt.plot(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1],\
+                    f'{complementary_colours[np.mod(i,3)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                poly, residual, _, _, _ = np.polyfit(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1],\
+                    deg=regression_power, full=True)
+                plt.plot(outmatrix_count[i][:, 0], np.polyval(poly, outmatrix_count[i][:, 0]),\
+                    f'{complementary_colours[np.mod(i,3)][1]}',\
+                        label=f'Power {regression_power} Regression: {get_folder(vistaoutput_path[i])}')
             plt.xlabel("distance (m)")
             plt.ylabel("voxel count ratio (number of occupied voxel/total count in sensor)")
             plt.legend()
             
-            plt.show(block=False)
+            #plt.show(block=False)
+            plt.show() 
             
             fig3 = plt.figure("Volume method")
             fig3.suptitle("Delta ratio of volumetric voxelization method", fontsize=12)
-            plt.plot(outmatrix_volume2[:, 0], outmatrix_volume2[:, 1], '-b', label=f'Original')
-            poly, residual, _, _, _ = np.polyfit(outmatrix_volume2[:, 0], outmatrix_volume2[:, 1], deg=regression_power, full=True)
-            plt.plot(outmatrix_volume2[:, 0], np.polyval(poly, outmatrix_volume2[:, 0]), '-y', label=f'Power {regression_power} Regression')
+            for i in range(numScenes):
+                plt.plot(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1],\
+                    f'{complementary_colours[np.mod(i,3)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                poly, residual, _, _, _ = np.polyfit(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1],\
+                    deg=regression_power, full=True)
+                plt.plot(outmatrix_volume2[i][:, 0], np.polyval(poly, outmatrix_volume2[i][:, 0]),\
+                    f'{complementary_colours[np.mod(i,3)][1]}',\
+                        label=f'Power {regression_power} Regression: {get_folder(vistaoutput_path[i])}')
             plt.xlabel("distance (m)")
             plt.ylabel("delta ratio (delta/max delta)")
             plt.legend()
         
-            plt.show(block=False)
+            #plt.show(block=False)
+            plt.show() 
         else:
             fig1 = plt.figure("Volume method")
             fig1.suptitle("Data ratio of volumetric voxelization method", fontsize=12)
-            plt.plot(outmatrix_volume[:, 0], outmatrix_volume[:, 1], '-r')
+            for i in range(numScenes):
+                plt.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1], f'{complementary_colours[np.mod(i,3)][0]}')
             plt.xlabel("distance (m)")
             plt.ylabel("volume ratio (volume of occupied voxel/total volume in sensor)")
 
-            plt.show(block=False)
+            #plt.show(block=False)
+            plt.show() 
             
             fig2 = plt.figure("Simple method")
             fig2.suptitle("Data ratio of simple voxelization method", fontsize=12)
-            plt.plot(outmatrix_count[:, 0], outmatrix_count[:, 1], '-g')
+            for i in range(numScenes):
+                plt.plot(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1], f'{complementary_colours[np.mod(i,3)][0]}')
             plt.xlabel("distance (m)")
             plt.ylabel("voxel count ratio (number of occupied voxel/total count in sensor)")
             
-            plt.show(block=False)
+            #plt.show(block=False)
+            plt.show() 
             
             fig3 = plt.figure("Volume method")
             fig3.suptitle("Delta ratio of volumetric voxelization method", fontsize=12)
-            plt.plot(outmatrix_volume2[:, 0], outmatrix_volume2[:, 1], '-b')
+            for i in range(numScenes):
+                plt.plot(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1], f'{complementary_colours[np.mod(i,3)][0]}')
             plt.xlabel("distance (m)")
             plt.ylabel("delta ratio (delta/max delta)")
         
-            plt.show(block=False)            
+            #plt.show(block=False) 
+            plt.show()            
 
     ## Data rate calculations
     # The calculation is the same one present on the paper we are basing this
@@ -482,13 +495,18 @@ def data_rate_vista_automated(
     # For outmatrix 1
     datarate_buffer = (32*sensor_range*azimuth_fov*elevation_fov*refresh_rate*bitspermeasurements)\
         /(3*voxel_asize*voxel_esize*voxel_rsize*snrMax)
-    log_inverse_delta = np.log((1/(2*outmatrix_volume[:, 1])))
-    delta_log_inverse_delta = outmatrix_volume[:, 1] * log_inverse_delta
-    an_data_rate = np.transpose(np.array([delta_log_inverse_delta * datarate_buffer]))
+    
+    an_data_rate = []
+    an_data_rate2 = []
+    
+    for i in range(numScenes):
+        log_inverse_delta = np.log((1/(2*outmatrix_volume[i][:, 1])))
+        delta_log_inverse_delta = outmatrix_volume[i][:, 1] * log_inverse_delta
+        an_data_rate.append(np.transpose(np.array([delta_log_inverse_delta * datarate_buffer])))
 
-    log_inverse_delta2 = np.log((1/(2*outmatrix_count[:, 1])))
-    delta_log_inverse_delta2 = outmatrix_count[:, 1] * log_inverse_delta2
-    an_data_rate2 = np.transpose(np.array([delta_log_inverse_delta2 * datarate_buffer]))
+        log_inverse_delta2 = np.log((1/(2*outmatrix_count[i][:, 1])))
+        delta_log_inverse_delta2 = outmatrix_count[i][:, 1] * log_inverse_delta2
+        an_data_rate2.append(np.transpose(np.array([delta_log_inverse_delta2 * datarate_buffer])))
     
     ## Datarate graphs
     if enable_graphical:
@@ -496,43 +514,59 @@ def data_rate_vista_automated(
             # Need to add main title and axis titles
             fig4 = plt.figure("Volume method datarate")
             fig4.suptitle("Data rate of volumetric voxelization method", fontsize=12)
-            plt.plot(outmatrix_volume[:, 0], an_data_rate[:, 0], '-r', label=f'Original')
-            poly, residual, _, _, _ = np.polyfit(outmatrix_volume[:, 0], an_data_rate[:, 0], deg=regression_power, full=True)
-            plt.plot(outmatrix_volume[:, 0], np.polyval(poly, outmatrix_volume[:, 0]), '-c', label=f'Power {regression_power} Regression')
+            for i in range(numScenes):
+                plt.plot(outmatrix_volume[i][:, 0], an_data_rate[i][:, 0],\
+                    f'{complementary_colours[np.mod(i,3)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                poly, residual, _, _, _ = np.polyfit(outmatrix_volume[i][:, 0], an_data_rate[i][:, 0], deg=regression_power, full=True)
+                plt.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
+                    f'{complementary_colours[np.mod(i,3)][1]}',\
+                        label=f'Power {regression_power} Regression: {get_folder(vistaoutput_path[i])}')
             plt.xlabel("distance (m)")
             plt.ylabel("Atomic norm Data rate")
+            plt.legend()
+            
+            plt.show()
             
             fig5 = plt.figure("Simple method datarate")
             fig5.suptitle("Data rate of simple voxelization method", fontsize=12)
-            plt.plot(outmatrix_count[:, 0], an_data_rate2[:, 0], '-b', label=f'Original')
-            poly, residual, _, _, _ = np.polyfit(outmatrix_count[:, 0], an_data_rate2[:, 0], deg=regression_power, full=True)
-            plt.plot(outmatrix_count[:, 0], np.polyval(poly, outmatrix_count[:, 0]), '-y', label=f'Power {regression_power} Regression')
+            for i in range(numScenes):
+                plt.plot(outmatrix_count[i][:, 0], an_data_rate2[i][:, 0],\
+                    f'{complementary_colours[np.mod(i,3)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                poly, residual, _, _, _ = np.polyfit(outmatrix_count[i][:, 0], an_data_rate2[i][:, 0], deg=regression_power, full=True)
+                plt.plot(outmatrix_count[i][:, 0], np.polyval(poly, outmatrix_count[i][:, 0]),\
+                    f'{complementary_colours[np.mod(i,3)][1]}',\
+                        label=f'Power {regression_power} Regression: {get_folder(vistaoutput_path[i])}')
             plt.xlabel("distance (m)")
-            plt.ylabel("Atomic norm Data rate")        
+            plt.ylabel("Atomic norm Data rate")   
+            plt.legend()     
             
-            plt.show(block=False)
+            #plt.show(block=False)
+            plt.show() 
         else:
             fig4 = plt.figure("Volume method datarate")
             fig4.suptitle("Data rate of volumetric voxelization method", fontsize=12)
-            plt.plot(outmatrix_volume[:, 0], an_data_rate[:, 0], '-r')
+            for i in range(numScenes):
+                plt.plot(outmatrix_volume[i][:, 0], an_data_rate[i][:, 0], f'{complementary_colours[np.mod(i,3)][0]}')
             plt.xlabel("distance (m)")
             plt.ylabel("Atomic norm Data rate")
             
             fig5 = plt.figure("Simple method datarate")
             fig5.suptitle("Data rate of simple voxelization method", fontsize=12)
-            plt.plot(outmatrix_count[:, 0], an_data_rate2[:, 0], '-b')
+            for i in range(numScenes):
+                plt.plot(outmatrix_count[i][:, 0], an_data_rate2[i][:, 0], f'{complementary_colours[np.mod(i,3)][0]}')
             plt.xlabel("distance (m)")
             plt.ylabel("Atomic norm Data rate")        
             
-            plt.show(block=False)            
+            #plt.show(block=False)   
+            plt.show()         
 
 def main():
     args = file_tools.parse_cmdline_args()
     sensorcon_path = file_tools.obtain_sensor_path(args)
-    path2scenes = file_tools.obtain_scene_path(args)
+    path2scenes = file_tools.obtain_multiple_scene_path(args)
     
     data_rate_vista_automated(
-        sensorcon_path=sensorcon_path, 
+        sensorcon_path=sensorcon_path,
         vistaoutput_path=path2scenes, 
         prepad_output=True, 
         enable_graphical=True,
