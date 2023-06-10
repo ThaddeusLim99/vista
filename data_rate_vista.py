@@ -457,7 +457,7 @@ def data_rate_vista_automated(
             #plt.show(block=False)
             plt.show() 
         else:
-            fig1 = plt.figure("Volume method")
+            fig1 = plt.figure("Volume method (data ratio)")
             fig1.suptitle("Data ratio of volumetric voxelization method", fontsize=12)
             for i in range(numScenes):
                 plt.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1], f'{complementary_colours[np.mod(i,3)][0]}')
@@ -477,7 +477,7 @@ def data_rate_vista_automated(
             #plt.show(block=False)
             plt.show() 
             
-            fig3 = plt.figure("Volume method")
+            fig3 = plt.figure("Volume method (delta ratio)")
             fig3.suptitle("Delta ratio of volumetric voxelization method", fontsize=12)
             for i in range(numScenes):
                 plt.plot(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1], f'{complementary_colours[np.mod(i,3)][0]}')
@@ -550,6 +550,8 @@ def data_rate_vista_automated(
             plt.xlabel("distance (m)")
             plt.ylabel("Atomic norm Data rate")
             
+            plt.show()
+            
             fig5 = plt.figure("Simple method datarate")
             fig5.suptitle("Data rate of simple voxelization method", fontsize=12)
             for i in range(numScenes):
@@ -557,6 +559,7 @@ def data_rate_vista_automated(
             plt.xlabel("distance (m)")
             plt.ylabel("Atomic norm Data rate")        
             
+
             #plt.show(block=False)   
             plt.show()         
 
