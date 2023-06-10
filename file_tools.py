@@ -345,6 +345,9 @@ def parse_cmdline_args() -> argparse.Namespace:
     parser.add_argument(
         "--scenes", type=str, default=None, help="Path to the Vista output folder"
     )
+    parser.add_argument(
+        "--numScenes", type=int, default=1, help="Number of Vista output folders"
+    )
     parser.add_argument("--input", type=str, default=None, help="Path to the .las file")
 
     return parser.parse_args()
@@ -496,6 +499,62 @@ def obtain_scene_path(args: argparse.Namespace) -> str:
         ]
     )
     print(f"{num_scenes} scenes were found for the corresponding road section folder.")
+
+    return scenes_folderpath
+
+# Obtain the path to our scenes
+def obtain_multiple_scene_path(args: argparse.Namespace) -> str:
+    """Obtains the path to the folder containing all of the outputs
+    to the Vista simulator.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+
+    Returns:
+        scenes_folderpath (str): Path to the folder containing the Vista outputs.
+    """
+    try:
+        arg_scene = args.scenes
+    except AttributeError:
+        arg_scene = None
+        
+    try:
+        arg_numScenes = args.numScenes
+    except AttributeError:
+        arg_numScenes = 1
+
+    scenes_folderpath = []
+    
+    # Get trajectory folder path
+    if arg_scene == None:
+        # Manually open trajectory folder
+        for i in range(arg_numScenes):
+            Tk().withdraw()
+            #print(type(tk.filedialog.askdirectory(
+            #    initialdir=ROOT2, title="Please select the Vista output folder"
+            #)))
+            scenes_folderpath.append(tk.filedialog.askdirectory(
+                initialdir=ROOT2, title="Please select the Vista output folder"
+            ))
+            print(
+                f"\nFor file {i}, you have chosen to open the folder to the scenes:\n{scenes_folderpath[-1]}"
+            )
+
+    else:
+        # Use trajectory folder from defined command line argument
+        scenes_folderpath.append(args.scenes)
+        print(
+            f"\nYou have chosen to use the predefined path to the scenes:\n{scenes_folderpath}"
+        )
+    for i in range(arg_numScenes):
+        num_scenes = len(
+            [
+                name
+                for name in os.listdir(scenes_folderpath[i])
+                if os.path.isfile(os.path.join(scenes_folderpath[i], name))
+            ]
+        )
+        print(f"{num_scenes} scenes were found for the corresponding road section folder.")
 
     return scenes_folderpath
 
