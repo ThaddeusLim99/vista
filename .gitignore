@@ -126,3 +126,7 @@ test_files/
 
 # Trimmed files
 trimmed/
+*.txt
+*.las
+*.deb
+*.js
