@@ -443,8 +443,8 @@ def data_rate_vista_automated(
             for i in range(numScenes):
                 if i == 0:           
                     #ORIGINAL PLOT
-                    #ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
-                    #   f'r', label=f'Original)')
+                    ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
+                       f'r', label=f'Original')
                     #ROLLING AVERAHE
                     ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume_ave[i],\
                         f'g', label=f'Rolling Average')
@@ -457,8 +457,8 @@ def data_rate_vista_automated(
                 else:
                     ax_new = ax1.twinx()
                     #ORIGINAL PLOT
-                    #ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
-                    #    f'r', label=f'Original)')
+                    ax_new.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
+                        f'r', label=f'Original')
                     #ROLLING AVERAGE
                     ax_new.plot(outmatrix_volume[i][:, 0], outmatrix_volume_ave[i],\
                         f'g', label=f'Rolling Average')                    
