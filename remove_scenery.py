@@ -36,7 +36,7 @@ def generate_bounds(traj: file_tools.Trajectory) -> np.ndarray:
     # TODO Utilise variable widths (and maybe lengths) later on.
     # For now the sizes of each bounding box are assumed constant.
     num_points = traj.getNumPoints()
-    width = np.array([-1.9, 5.7]).reshape((1, 2))  # In the y-direction
+    width = np.array([-1.5, 5.3]).reshape((1, 2))  # In the y-direction NOTE [-1.9, 5.7]
     widths = np.repeat(width, num_points, axis=0)
     
     # From 450 onwards
@@ -354,7 +354,7 @@ def main():
     remove_scenery(bounds, las, las_filename)
     
     # For testing
-    # debug_write_bounds(bounds, las_filename)
+    debug_write_bounds(bounds, las_filename)
     return
 
 

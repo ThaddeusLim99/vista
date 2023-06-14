@@ -2,7 +2,7 @@
 
 ### USER INPUT HERE ###
 processes=6
-LASFILE="hz03210W_C1L1_24000_20000-f_y_trimmed.las"
+LASFILE="VL-Veg-81604S_C1L1_08000_04000.las"
 JSONFILE=velodyne_alpha_128.json # Do not put quotes here
 observer_height=1.8
 PAD_OUTPUTS=true

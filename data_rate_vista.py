@@ -434,6 +434,7 @@ def data_rate_vista_automated(
     if enable_graphical:
         if enable_regression:
             
+            
             # Need to add main title and axis titles    
             fig1, ax1 = plt.subplots()
             fig1.canvas.manager.set_window_title('Volume Method') 
@@ -444,30 +445,30 @@ def data_rate_vista_automated(
                 if i == 0:           
                     #ORIGINAL PLOT
                     ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
-                       f'r', label=f'Original')
+                       f'r', label=f'Original)')
                     #ROLLING AVERAHE
                     ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume_ave[i],\
                         f'g', label=f'Rolling Average')
                     #BEST FIT LINE
                     poly, residual, _, _, _ = np.polyfit(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
                         deg=regression_power, full=True)
-                    ax1.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
+                    #ax1.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
+                        #f'b',\
+                            #label=f'Fitted: {get_folder(vistaoutput_path[i])}')
                 else:
                     ax_new = ax1.twinx()
                     #ORIGINAL PLOT
-                    ax_new.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
-                        f'r', label=f'Original')
+                    #ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
+                    #    f'r', label=f'Original)')
                     #ROLLING AVERAGE
                     ax_new.plot(outmatrix_volume[i][:, 0], outmatrix_volume_ave[i],\
                         f'g', label=f'Rolling Average')                    
                     #BEST FIT LINE
                     poly, residual, _, _, _ = np.polyfit(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
                         deg=regression_power, full=True)
-                    ax_new.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
+                    #ax_new.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
+                        #f'b',\
+                            #label=f'Fitted: {get_folder(vistaoutput_path[i])}')
                     #Setting new Y-axis
                     ax_new.set_ylabel(f"volume ratio (volume of occupied voxel/total volume in sensor) {get_folder(vistaoutput_path[i])}"\
                         , color=complementary_colours[np.mod(i,3)][0])
@@ -498,9 +499,9 @@ def data_rate_vista_automated(
                     #BEST FIT LINE
                     poly, residual, _, _, _ = np.polyfit(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1],\
                         deg=regression_power, full=True)
-                    ax2.plot(outmatrix_count[i][:, 0], np.polyval(poly, outmatrix_count[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
+                    #ax2.plot(outmatrix_count[i][:, 0], np.polyval(poly, outmatrix_count[i][:, 0]),\
+                        #f'b',\
+                            #label=f'Fitted: {get_folder(vistaoutput_path[i])}')
                     
                 else:
                     ax2_new = ax2.twinx()
