@@ -158,14 +158,22 @@ def occupancy_volume(input: tuple) -> np.float32:
     # Azimuth range
     spherical_point_cloud_data = spherical_point_cloud_data[spherical_point_cloud_data[:, 2] < sensorcon["a_high"]]
     spherical_point_cloud_data = spherical_point_cloud_data[spherical_point_cloud_data[:, 2] >= sensorcon["a_low"]]
+    
     ## Spherical voxelization
+    # Think of each voxel as a dV element in spherical coordinates, except that its
+    # not of infinitesmal size. We are simply making an evenly spaced grid (in spherical coordinates)
+    # of the solid that is bounded the sensor FOV.
+    #
+    # Here we take the real coordinates of each point, and convert to voxel indices
+    # We take the floor of the voxel indices that are 'close enough' to each other; 
+    # i.e., duplicate indices correspond to multiple points within a voxel
     spherical_point_cloud_data[:, 2] = np.floor(spherical_point_cloud_data[:, 2]/voxel_struct["a_size"])
     spherical_point_cloud_data[:, 1] = np.floor(spherical_point_cloud_data[:, 1]/voxel_struct["e_size"])
     spherical_point_cloud_data[:, 0] = np.floor(spherical_point_cloud_data[:, 0]/voxel_struct["r_size"])
 
     ## Only keep unique voxels
     # Removing duplicates creates the voxel data and also sorts it
-    # We are also removing occlusions by sorting the original coordinates by
+    # We are also handling occlusions by sorting the original coordinates by
     # the distance from the sensor. Then we run unique on the azimuth and
     # elevation angle. The index output from that will be used to basically get
     # rid of all the voxels behind a certain angle coordinate.
@@ -174,6 +182,7 @@ def occupancy_volume(input: tuple) -> np.float32:
     vx = vx[np.argsort(unique_indices)]
     
     ## Finding volume
+    # Simply take the integral of the all the voxels
     # Getting the range for integration
     a_low = vx[:, 2] * voxel_struct["a_size"]
     e_low = vx[:, 1] * voxel_struct["e_size"]
@@ -254,13 +263,20 @@ def occupancy_count(input: tuple) -> np.float32:
     spherical_point_cloud_data = spherical_point_cloud_data[spherical_point_cloud_data[:, 2] >= sensorcon["a_low"]]
 
     ## Spherical voxelization
+    # Think of each voxel as a dV element in spherical coordinates, except that its
+    # not of infinitesmal size. We are simply making an evenly spaced grid (in spherical coordinates)
+    # of the solid that is bounded the sensor FOV.
+    #
+    # Here we take the real coordinates of each point, and convert to voxel indices
+    # We take the floor of the voxel indices that are 'close enough' to each other; 
+    # i.e., duplicate indices correspond to multiple points within a voxel
     spherical_point_cloud_data[:, 2] = np.floor(spherical_point_cloud_data[:, 2]/voxel_struct["a_size"])
     spherical_point_cloud_data[:, 1] = np.floor(spherical_point_cloud_data[:, 1]/voxel_struct["e_size"])
     spherical_point_cloud_data[:, 0] = np.floor(spherical_point_cloud_data[:, 0]/voxel_struct["r_size"])
     
     ## Only keep unique voxels
     # Removing duplicates creates the voxel data and also sorts it
-    # We are also removing occlusions by sorting the original coordinates by
+    # We are also handling occlusions by sorting the original coordinates by
     # the distance from the sensor. Then we run unique on the azimuth and
     # elevation angle. The index output from that will be used to basically get
     # rid of all the voxels behind a certain angle coordinate.
