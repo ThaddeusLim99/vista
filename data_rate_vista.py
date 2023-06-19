@@ -446,201 +446,73 @@ def data_rate_vista_automated(
     #complementary_colours = [['-r','-c'],['-g','-m'],['-b','-y']]
     complementary_colours = [['r','c'],['g','m'],['b','y']]
     
+    
+    def displayGraph(xBarData,yBarData,yBarAverageData,windowTitle,graphTitle,xlabel,ylabel,isShowOriginal,isShowAverage,isShowRegression):
+        # Need to add main title and axis titles    
+        fig, ax = plt.subplots()
+        fig.canvas.manager.set_window_title(f'{windowTitle}') 
+        fig.suptitle(f"{graphTitle}", fontsize=12)
+        ax.set_ylabel(f"{ylabel} {get_folder(vistaoutput_path[0])}",color='r')
+        ax.tick_params(axis='y', colors='r')
+        for i in range(numScenes):
+            if i == 0:           
+                #ORIGINAL PLOT
+                if isShowOriginal:
+                    ax.plot(xBarData[i][:, 0], yBarData[i][:, 1],f'r', label=f'Original)')
+                #ROLLING AVERAHE
+                if isShowAverage:
+                    ax.plot(xBarData[i][:, 0], yBarAverageData[i],f'g', label=f'Rolling Average')
+                #BEST FIT LINE
+                if isShowRegression:
+                    poly, residual, _, _, _ = np.polyfit(xBarData[i][:, 0], yBarData[i][:, 1],deg=regression_power, full=True)
+                    ax.plot(xBarData[i][:, 0], np.polyval(poly, xBarData[i][:, 0]),f'b',\
+                        label=f'Fitted: {get_folder(vistaoutput_path[i])}')
+            else:
+                ax_new = ax.twinx()
+                #ORIGINAL PLOT
+                if isShowOriginal:
+                    ax_new.plot(xBarData[i][:, 0], yBarData[i][:, 1],f'r', label=f'Original)')
+                #ROLLING AVERAGE
+                if isShowAverage:
+                    ax_new.plot(xBarData[i][:, 0], yBarAverageData[i],f'g', label=f'Rolling Average')                    
+                #BEST FIT LINE
+                if isShowRegression:
+                    poly, residual, _, _, _ = np.polyfit(xBarData[i][:, 0], yBarData[i][:, 1],deg=regression_power, full=True)
+                    ax_new.plot(xBarData[i][:, 0], np.polyval(poly, xBarData[i][:, 0]),f'b',\
+                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
+                #Setting new Y-axis
+                ax_new.set_ylabel(f"{ylabel} {get_folder(vistaoutput_path[i])}"\
+                    , color=complementary_colours[np.mod(i,3)][0])
+                ax_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
+                
+                offset = (i - 1) * 0.7
+                ax_new.spines['right'].set_position(('outward', offset * 100))                 
+                
+        ax.set_xlabel(f"{xlabel}")
+        fig.legend()
+        #plt.ylabel("volume ratio (volume of occupied voxel/total volume in sensor)")
+        fig.tight_layout()
+        
+        return fig, ax            
+    
     ## Making graph
     if enable_graphical:
         if enable_regression:
-            
-            
-            # Need to add main title and axis titles    
-            fig1, ax1 = plt.subplots()
-            fig1.canvas.manager.set_window_title('Volume Method') 
-            fig1.suptitle("Data ratio of volumetric voxelization method", fontsize=12)
-            ax1.set_ylabel(f"volume ratio (volume of occupied voxel/total volume in sensor) {get_folder(vistaoutput_path[0])}",color='r')
-            ax1.tick_params(axis='y', colors='r')
-            for i in range(numScenes):
-                if i == 0:           
-                    #ORIGINAL PLOT
-                    ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
-                       f'r', label=f'Original)')
-                    #ROLLING AVERAHE
-                    ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume_ave[i],\
-                        f'g', label=f'Rolling Average')
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
-                        deg=regression_power, full=True)
-                    #ax1.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
-                        #f'b',\
-                            #label=f'Fitted: {get_folder(vistaoutput_path[i])}')
-                else:
-                    ax_new = ax1.twinx()
-                    #ORIGINAL PLOT
-                    #ax1.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
-                    #    f'r', label=f'Original)')
-                    #ROLLING AVERAGE
-                    ax_new.plot(outmatrix_volume[i][:, 0], outmatrix_volume_ave[i],\
-                        f'g', label=f'Rolling Average')                    
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1],\
-                        deg=regression_power, full=True)
-                    #ax_new.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
-                        #f'b',\
-                            #label=f'Fitted: {get_folder(vistaoutput_path[i])}')
-                    #Setting new Y-axis
-                    ax_new.set_ylabel(f"volume ratio (volume of occupied voxel/total volume in sensor) {get_folder(vistaoutput_path[i])}"\
-                        , color=complementary_colours[np.mod(i,3)][0])
-                    ax_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
-                    
-                    offset = (i - 1) * 0.7
-                    ax_new.spines['right'].set_position(('outward', offset * 100))                 
-                
-            plt.xlabel("distance (m)")
-            fig1.legend()
-            #plt.ylabel("volume ratio (volume of occupied voxel/total volume in sensor)")
-            fig1.tight_layout()
-            #plt.show() 
-            
-            fig2, ax2 = plt.subplots()
-            fig2.canvas.manager.set_window_title('Simple Method') 
-            fig2.suptitle("Data ratio of simple voxelization method", fontsize=12)
-            ax2.set_ylabel(f"voxel count ratio (number of occupied voxel/total count in sensor) {get_folder(vistaoutput_path[0])}",color='r')
-            ax2.tick_params(axis='y', colors='r')            
-            for i in range(numScenes):
-                if i == 0:
-                    #ORIGINAL PLOT
-                    ax2.plot(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax2.plot(outmatrix_count[i][:, 0], outmatrix_count_ave[i],\
-                        f'g', label=f'Rolling Average')                    
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1],\
-                        deg=regression_power, full=True)
-                    #ax2.plot(outmatrix_count[i][:, 0], np.polyval(poly, outmatrix_count[i][:, 0]),\
-                        #f'b',\
-                            #label=f'Fitted: {get_folder(vistaoutput_path[i])}')
-                    
-                else:
-                    ax2_new = ax2.twinx()
-                    #ORIGINAL PLOT
-                    ax2_new.plot(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax2_new.plot(outmatrix_count[i][:, 0], outmatrix_count_ave[i],\
-                        f'g', label=f'Rolling Average')                    
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1],\
-                        deg=regression_power, full=True)
-                    ax2_new.plot(outmatrix_count[i][:, 0], np.polyval(poly, outmatrix_count[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted:  {get_folder(vistaoutput_path[i])}')                    
-                    #Setting new Y-axis
-                    ax2_new.set_ylabel(f"voxel count ratio (number of occupied voxel/total count in sensor) {get_folder(vistaoutput_path[i])}"\
-                        , color=complementary_colours[np.mod(i,3)][0])
-                    ax2_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
-                    
-                    offset = (i - 1) * 0.7
-                    ax2_new.spines['right'].set_position(('outward', offset * 100))  
-                    
-            plt.xlabel("distance (m)")
-            #plt.ylabel("voxel count ratio (number of occupied voxel/total count in sensor)")
-            fig2.legend()
-            fig2.tight_layout()
-            
-            #plt.show(block=False)
-            #plt.show()             
-            
-            fig3, ax3 = plt.subplots()
-            fig3.canvas.manager.set_window_title('Volume Method') 
-            fig3.suptitle("Delta ratio of volumetric voxelization method", fontsize=12)
-            ax3.set_ylabel(f"delta ratio (delta/max delta) {get_folder(vistaoutput_path[0])}",color='r')
-            ax3.tick_params(axis='y', colors='r')
-            for i in range(numScenes):
-                if i == 0:
-                    #ORIGINAL PLOT
-                    ax3.plot(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax3.plot(outmatrix_volume2[i][:, 0], outmatrix_volume2_ave[i],\
-                        f'g', label=f'Rolling Average')                     
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1],\
-                        deg=regression_power, full=True)
-                    ax3.plot(outmatrix_volume2[i][:, 0], np.polyval(poly, outmatrix_volume2[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted:  {get_folder(vistaoutput_path[i])}')
-                else:
-                    ax3_new = ax3.twinx()
-                    ax3_new.plot(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax3_new.plot(outmatrix_volume2[i][:, 0], outmatrix_volume2_ave[i],\
-                        f'g', label=f'Rolling Average')                     
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1],\
-                        deg=regression_power, full=True)
-                    ax3_new.plot(outmatrix_volume2[i][:, 0], np.polyval(poly, outmatrix_volume2[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted:  {get_folder(vistaoutput_path[i])}')
-                    #Setting new Y-axis
-                    ax3_new.set_ylabel(f"delta ratio (delta/max delta) {get_folder(vistaoutput_path[i])}"\
-                        , color=complementary_colours[np.mod(i,3)][0])
-                    ax3_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
-                    
-                    offset = (i - 1) * 0.7
-                    ax3_new.spines['right'].set_position(('outward', offset * 100))  
-            
-            plt.xlabel("distance (m)")
-            #plt.ylabel("delta ratio (delta/max delta)")
-            fig3.legend()
-            fig3.tight_layout()
-        
-            #plt.show(block=False)
-            #plt.show()
-            
-            fig6, ax6 = plt.subplots()
-            fig6.canvas.manager.set_window_title("Simple method") 
-            fig6.suptitle("Delta ratio of simple voxelization method", fontsize=12)
-            ax6.set_ylabel(f"delta ratio (delta/max delta) {get_folder(vistaoutput_path[0])}",color='r')
-            ax6.tick_params(axis='y', colors='r')
-            for i in range(numScenes):
-                if i == 0:
-                    #ORIGINAL PLOT
-                    ax6.plot(outmatrix_count2[i][:, 0], outmatrix_count2[i][:, 1],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax6.plot(outmatrix_count2[i][:, 0], outmatrix_count2_ave[i],\
-                        f'g', label=f'Rolling Average')                     
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_count2[i][:, 0], outmatrix_count2[i][:, 1],\
-                        deg=regression_power, full=True)
-                    ax6.plot(outmatrix_count2[i][:, 0], np.polyval(poly, outmatrix_count2[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted:  {get_folder(vistaoutput_path[i])}')
-                else:
-                    ax6_new = ax3.twinx()
-                    ax6_new.plot(outmatrix_count2[i][:, 0], outmatrix_count2[i][:, 1],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax6_new.plot(outmatrix_count2[i][:, 0], outmatrix_count2_ave[i],\
-                        f'g', label=f'Rolling Average')                     
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_count2[i][:, 0], outmatrix_count2[i][:, 1],\
-                        deg=regression_power, full=True)
-                    ax6_new.plot(outmatrix_count2[i][:, 0], np.polyval(poly, outmatrix_count2[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted:  {get_folder(vistaoutput_path[i])}')
-                    #Setting new Y-axis
-                    ax6_new.set_ylabel(f"delta ratio (delta/max delta) {get_folder(vistaoutput_path[i])}"\
-                        , color=complementary_colours[np.mod(i,3)][0])
-                    ax6_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
-                    
-                    offset = (i - 1) * 0.7
-                    ax6_new.spines['right'].set_position(('outward', offset * 100))  
-            
-            plt.xlabel("distance (m)")
-            #plt.ylabel("delta ratio (delta/max delta)")
-            fig6.legend()
-            fig6.tight_layout() 
+            fig1, ax1 = displayGraph(outmatrix_volume,outmatrix_volume,outmatrix_volume_ave,'Volume Method',\
+                'Data ratio of volumetric voxelization method','distance (m)',\
+                    'volume ratio (volume of occupied voxel/total volume in sensor)',True,True,True)
+    
+            fig2, ax2 = displayGraph(outmatrix_count,outmatrix_count,outmatrix_count_ave,'Simple Method',\
+                'Data ratio of simple voxelization method','distance (m)',\
+                    'voxel count ratio (number of occupied voxel/total count in sensor)',True,True,True)
+
+            fig3, ax3 = displayGraph(outmatrix_volume2,outmatrix_volume2,outmatrix_volume2_ave,'Volume Method',\
+                'Delta ratio of volumetric voxelization method','distance (m)',\
+                    'delta ratio (delta/max delta)',True,True,True)       
+
+            fig6, ax6 = displayGraph(outmatrix_count2,outmatrix_count2,outmatrix_count2_ave,'Simple method',\
+                'Delta ratio of simple voxelization method','distance (m)',\
+                    'delta ratio (delta/max delta)',True,True,True)
         else:
             #TO UPDATE
             '''
@@ -703,103 +575,64 @@ def data_rate_vista_automated(
         an_data_rate_ave.append(rolling_average(an_data_rate[itr],0))
         an_data_rate2_ave.append(rolling_average(an_data_rate2[itr],0))
 
+    def displayDataRateGraph(xBarData,yBarData,yBarAverageData,windowTitle,graphTitle,xlabel,ylabel,isShowOriginal,isShowAverage,isShowRegression):
+            fig, ax = plt.subplots()
+            fig.canvas.manager.set_window_title(f'{windowTitle}') 
+            fig.suptitle(f"{graphTitle}", fontsize=12)
+            ax.set_ylabel(f"{ylabel} {get_folder(vistaoutput_path[0])}",color='r')
+            ax.tick_params(axis='y', colors='r')
+            for i in range(numScenes):
+                if i == 0:
+                    #ORIGINAL PLOT
+                    ax.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
+                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                    #ROLLING AVERAGE
+                    ax.plot(xBarData[i][:, 0], yBarAverageData[i],\
+                        f'g', label=f'Rolling Average')                      
+                    #BEST FIT LINE
+                    poly, residual, _, _, _ = np.polyfit(xBarData[i][:, 0], yBarData[i][:, 0], deg=regression_power, full=True)
+                    ax.plot(xBarData[i][:, 0], np.polyval(poly, xBarData[i][:, 0]),\
+                        f'b',\
+                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
+                else:
+                    ax_new = ax.twinx()
+                    #ORIGINAL PLOT
+                    ax_new.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
+                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                    #ROLLING AVERAGE
+                    ax_new.plot(xBarData[i][:, 0], yBarAverageData[i],\
+                        f'g', label=f'Rolling Average')                      
+                    #BEST FIT LINE
+                    poly, residual, _, _, _ = np.polyfit(xBarData[i][:, 0], yBarData[i][:, 0], deg=regression_power, full=True)
+                    ax_new.plot(xBarData[i][:, 0], np.polyval(poly, xBarData[i][:, 0]),\
+                        f'b',\
+                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
+                    #Setting new Y-axis
+                    ax_new.set_ylabel(f"Atomic norm Data rate {get_folder(vistaoutput_path[i])}"\
+                        , color=complementary_colours[np.mod(i,3)][0])
+                    ax_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
+                    
+                    offset = (i - 1) * 0.7
+                    ax_new.spines['right'].set_position(('outward', offset * 100))
+                     
+            ax.set_xlabel(f"{xlabel}")
+            #plt.ylabel("Atomic norm Data rate")
+            fig.legend()
+            fig.tight_layout()
+            
+            return fig, ax
+
     ## Datarate graphs
     if enable_graphical:
         if enable_regression:
             # Need to add main title and axis titles     
-            fig4, ax4 = plt.subplots()
-            fig4.canvas.manager.set_window_title('Volume method datarate') 
-            fig4.suptitle("Data rate of volumetric voxelization method", fontsize=12)
-            ax4.set_ylabel(f"Atomic norm Data rate {get_folder(vistaoutput_path[0])}",color='r')
-            ax4.tick_params(axis='y', colors='r')
-            for i in range(numScenes):
-                if i == 0:
-                    #ORIGINAL PLOT
-                    ax4.plot(outmatrix_volume[i][:, 0], an_data_rate[i][:, 0],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax4.plot(outmatrix_volume[i][:, 0], an_data_rate_ave[i],\
-                        f'g', label=f'Rolling Average')                      
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_volume[i][:, 0], an_data_rate[i][:, 0], deg=regression_power, full=True)
-                    ax4.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
-                else:
-                    ax4_new = ax4.twinx()
-                    #ORIGINAL PLOT
-                    ax4_new.plot(outmatrix_volume[i][:, 0], an_data_rate[i][:, 0],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax4_new.plot(outmatrix_volume[i][:, 0], an_data_rate_ave[i],\
-                        f'g', label=f'Rolling Average')                      
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_volume[i][:, 0], an_data_rate[i][:, 0], deg=regression_power, full=True)
-                    ax4_new.plot(outmatrix_volume[i][:, 0], np.polyval(poly, outmatrix_volume[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
-                    #Setting new Y-axis
-                    ax4_new.set_ylabel(f"Atomic norm Data rate {get_folder(vistaoutput_path[i])}"\
-                        , color=complementary_colours[np.mod(i,3)][0])
-                    ax4_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
-                    
-                    offset = (i - 1) * 0.7
-                    ax4_new.spines['right'].set_position(('outward', offset * 100))
-                     
-            plt.xlabel("distance (m)")
-            #plt.ylabel("Atomic norm Data rate")
-            fig4.legend()
-            fig4.tight_layout()
-            
-            #plt.show(block=False)
-            #plt.show()
-            
-            fig5, ax5 = plt.subplots()
-            fig5.canvas.manager.set_window_title("Simple method datarate") 
-            fig5.suptitle("Data rate of simple voxelization method", fontsize=12)
-            ax5.set_ylabel(f"Atomic norm Data rate {get_folder(vistaoutput_path[0])}",color='r')
-            ax5.tick_params(axis='y', colors='r')
-            for i in range(numScenes):
-                if i == 0:
-                    #ORIGINAL PLOT
-                    ax5.plot(outmatrix_count[i][:, 0], an_data_rate2[i][:, 0],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax5.plot(outmatrix_count[i][:, 0], an_data_rate2_ave[i],\
-                        f'g', label=f'Rolling Average')                      
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_count[i][:, 0], an_data_rate2[i][:, 0], deg=regression_power, full=True)
-                    ax5.plot(outmatrix_count[i][:, 0], np.polyval(poly, outmatrix_count[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
-                else:
-                    ax5_new = ax5.twinx()
-                    #ORIGINAL PLOT
-                    ax5_new.plot(outmatrix_count[i][:, 0], an_data_rate2[i][:, 0],\
-                        f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
-                    #ROLLING AVERAGE
-                    ax5_new.plot(outmatrix_count[i][:, 0], an_data_rate2_ave[i],\
-                        f'g', label=f'Rolling Average')                      
-                    #BEST FIT LINE
-                    poly, residual, _, _, _ = np.polyfit(outmatrix_count[i][:, 0], an_data_rate2[i][:, 0], deg=regression_power, full=True)
-                    ax5_new.plot(outmatrix_count[i][:, 0], np.polyval(poly, outmatrix_count[i][:, 0]),\
-                        f'b',\
-                            label=f'Fitted: {get_folder(vistaoutput_path[i])}')
-                    #Setting new Y-axis
-                    ax5_new.set_ylabel(f"Atomic norm Data rate {get_folder(vistaoutput_path[i])}"\
-                        , color=complementary_colours[np.mod(i,3)][0])
-                    ax5_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
-                    
-                    offset = (i - 1) * 0.7
-                    ax5_new.spines['right'].set_position(('outward', offset * 100))
-                    
-            plt.xlabel("distance (m)")
-            #plt.ylabel("Atomic norm Data rate")   
-            fig5.legend()
-            fig5.tight_layout()    
-            
-            #plt.show(block=False)
-            #plt.show() 
+            fig4, ax4 = displayDataRateGraph(outmatrix_volume,an_data_rate,an_data_rate_ave,'Volume method datarate',\
+                'Data rate of volumetric voxelization method','distance (m)',\
+                    'Atomic norm Data rate',True,True,True)
+
+            fig5, ax5 = displayDataRateGraph(outmatrix_count,an_data_rate2,an_data_rate2_ave,'Simple method datarate',\
+                'Data rate of simple voxelization method','distance (m)',\
+                    'Atomic norm Data rate',True,True,True)
         else:
             #TO UPDATE
             '''
