@@ -579,8 +579,12 @@ def data_rate_vista_automated(
         an_data_rate2_ave.append(rolling_average(an_data_rate2[itr],0))
 
     #green is for simple, red is for volumetric
-    def showDataRateGraph(xBarData,yBarData,yBarAverageData,windowTitle,graphTitle,xlabel,ylabel):
-        
+    #complementary_colours = [['-r','-c'],['-g','-m'],['-b','-y']]
+    def showDataRateGraph(xBarData,yBarData,yBarAverageData,windowTitle,graphTitle,xlabel,ylabel,isSimple):
+        if isSimple:
+            colourScheme = [['g','m'],['b','y']]
+        else:
+            colourScheme = [['r','c'],['b','y']]
         
         #number 2 (show original outputs for multiple graphs with only 1 y-scale)
         fig1, ax1 = plt.subplots()
@@ -592,7 +596,7 @@ def data_rate_vista_automated(
         for i in range(numScenes):
             #ORIGINAL PLOT
             ax1.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}')
         
         ax1.set_xlabel(f"{xlabel}")
         fig1.legend()
@@ -609,16 +613,16 @@ def data_rate_vista_automated(
             if i == 0:
                 #ORIGINAL PLOT
                 ax2.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                    f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                    f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}')
             else:
                 ax2_new = ax2.twinx()
                 #ORIGINAL PLOT
                 ax2_new.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                    f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                    f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}')
                 #Setting new Y-axis
                 ax2_new.set_ylabel(f"Atomic norm Data rate {get_folder(vistaoutput_path[i])}"\
-                    , color=complementary_colours[np.mod(i,3)][0])
-                ax2_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
+                    , color=f'{colourScheme[np.mod(i,2)][0]}')
+                ax2_new.tick_params(axis='y', colors=f'{colourScheme[np.mod(i,2)][0]}')   
                 
                 offset = (i - 1) * 0.7
                 ax2_new.spines['right'].set_position(('outward', offset * 100))
@@ -638,9 +642,9 @@ def data_rate_vista_automated(
         for i in range(numScenes):
             #ORIGINAL PLOT
             ax3.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                f'r', label=f'Original: {get_folder(vistaoutput_path[i])}', alpha=0.3)
+                f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}', alpha=0.3)
             ax3.plot(xBarData[i][:, 0], yBarAverageData[i],\
-                f'g', label=f'Rolling Average: {get_folder(vistaoutput_path[i])}') 
+                f'{colourScheme[np.mod(i,2)][1]}', label=f'Rolling Average: {get_folder(vistaoutput_path[i])}') 
         
         ax3.set_xlabel(f"{xlabel}")
         fig3.legend()
@@ -657,20 +661,20 @@ def data_rate_vista_automated(
             if i == 0:
                 #ORIGINAL PLOT
                 ax4.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                    f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                    f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}', alpha=0.3)
                 ax4.plot(xBarData[i][:, 0], yBarAverageData[i],\
-                    f'g', label=f'Rolling Average: {get_folder(vistaoutput_path[i])}', alpha=0.3)   
+                    f'{colourScheme[np.mod(i,2)][1]}', label=f'Rolling Average: {get_folder(vistaoutput_path[i])}')   
             else:
                 ax4_new = ax4.twinx()
                 #ORIGINAL PLOT
                 ax4_new.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                    f'r', label=f'Original: {get_folder(vistaoutput_path[i])}')
+                    f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {get_folder(vistaoutput_path[i])}', alpha=0.3)
                 ax4_new.plot(xBarData[i][:, 0], yBarAverageData[i],\
-                    f'g', label=f'Rolling Average: {get_folder(vistaoutput_path[i])}', alpha=0.3)  
+                    f'{colourScheme[np.mod(i,2)][1]}', label=f'Rolling Average: {get_folder(vistaoutput_path[i])}')  
                 #Setting new Y-axis
                 ax4_new.set_ylabel(f"Atomic norm Data rate {get_folder(vistaoutput_path[i])}"\
-                    , color=complementary_colours[np.mod(i,3)][0])
-                ax4_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
+                    , color=f'{colourScheme[np.mod(i,2)][0]}')
+                ax4_new.tick_params(axis='y', colors=f'{colourScheme[np.mod(i,2)][0]}')   
                 
                 offset = (i - 1) * 0.7
                 ax4_new.spines['right'].set_position(('outward', offset * 100))
@@ -736,12 +740,25 @@ def data_rate_vista_automated(
             # Need to add main title and axis titles     
             fig4, ax4, fig41, ax41, fig42, ax42, fig43, ax43 = showDataRateGraph(outmatrix_volume,an_data_rate,\
                 an_data_rate_ave,'Volume method datarate','Data rate of volumetric voxelization method','distance (m)',\
-                    'Atomic norm Data rate')
+                    'Atomic norm Data rate',False)
 
             fig5, ax5, fig51, ax51, fig52, ax52, fig53, ax53 = showDataRateGraph(outmatrix_count,an_data_rate2,\
                 an_data_rate2_ave,'Simple method datarate','Data rate of simple voxelization method','distance (m)',\
-                    'Atomic norm Data rate')
+                    'Atomic norm Data rate',True)
             
+            for i in range(numScenes):
+                plt.figure(f"Method datarate comparison: {get_folder(vistaoutput_path[i])}")
+                plt.suptitle("Data rate of volumetric voxelization method vs simple voxelization method", fontsize=12)
+                plt.plot(outmatrix_volume[i][:, 0], an_data_rate_ave[i],\
+                f'r', label=f'Rolling Average of volumetric method: {get_folder(vistaoutput_path[0])}')
+                plt.plot(outmatrix_count[i][:, 0], an_data_rate2_ave[i],\
+                f'g', label=f'Rolling Average of simple method: {get_folder(vistaoutput_path[0])}')  
+                plt.xlabel("distance (m)")
+                plt.ylabel(f"Data Rate of volumetric voxelization method: {get_folder(vistaoutput_path[i])}")
+                cursor(hover=True)
+                  
+            
+            '''
             fig7, ax7 = plt.subplots()
             fig7.canvas.manager.set_window_title(f'Simple vs Volumetric') 
             fig7.suptitle(f"Simple vs volumetric data rate", fontsize=12)
@@ -759,6 +776,7 @@ def data_rate_vista_automated(
             fig7.legend()
             fig7.tight_layout()
             cursor(hover=True)
+            '''
         else:
             #TO UPDATE
             '''
