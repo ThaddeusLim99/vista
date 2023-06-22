@@ -36,29 +36,24 @@ def generate_bounds(traj: file_tools.Trajectory) -> np.ndarray:
     # TODO Utilise variable widths (and maybe lengths) later on.
     # For now the sizes of each bounding box are assumed constant.
     num_points = traj.getNumPoints()
-    width = np.array([-1.5, 5.3]).reshape((1, 2))  # In the y-direction NOTE [-1.9, 5.7]
-    widths = np.repeat(width, num_points, axis=0)
     
-    # From 450 onwards
-    #widths[450:, 0] = -7.9
-    #widths[450:, 1] = 12.8
+    # Values are indexed from [low, high]
+    # I really should make an object or something for this to make things easier to read
+    width = np.array([-5, 5]).reshape((1, 2))    # In the y-direction # NOTE temporary: -1.5 to 5.3
+    widths = np.repeat(width, num_points, axis=0)    # Repeats the widths
     
-    # From 2187 onwards
-    #widths[2187:, 0] = -9.4
-    #widths[2187:, 1] = 14.3
-    
-    # From 2450 onwards
-    #widths[2450:, 0] = -7.9
-    #widths[2450:, 1] = 12.8
-    
-    
-    length = np.array([-1.5, 1.5]).reshape((1, 2))  # In the x-direction
-    lengths = np.repeat(length, num_points, axis=0) # Repeats the lengths
+    length = np.array([-1.75, 1.75]).reshape((1, 2))   # In the x-direction
+    lengths = np.repeat(length, num_points, axis=0)  # Repeats the lengths
 
-    return widths, lengths
+    height = np.array([-2, 0.25]).reshape((1, 2))     # In the z-direction 
+    heights = np.repeat(height, num_points, axis=0)  # Repeats the heights
+
+
+    return widths, lengths, heights
+
 
 def generate_bounding_boxes(
-    traj: file_tools.Trajectory, widths: np.ndarray, lengths: np.ndarray
+    traj: file_tools.Trajectory, widths: np.ndarray, lengths: np.ndarray, heights: np.ndarray
 ) -> np.ndarray:
     """Generates bounding box ABCD of a specified size centered and rotated along 
     each and every road point.
@@ -71,8 +66,6 @@ def generate_bounding_boxes(
          [y_min0, y_max0],
          ...
          [y_minN, y_maxN]]
-         
-        The z-coordinate here is zero for all bounding points.
         
         lengths (np.ndarray): The lengths of each segment, given in an (N, 2) array,
         in the format:
@@ -80,15 +73,80 @@ def generate_bounding_boxes(
          [x_min0, x_max0],
          ...
          [x_minN, x_maxN]]
-         
-        The z-coordinate here is zero for all bounding points.
+
+        heights (np.ndarray): The heights of each segment, given in an (N, 2) array,
+        in the format:
+        [[z_min0, z_max0],
+         [z_min0, z_max0],
+         ...
+         [z_minN, z_maxN]]
 
     Returns:
-        bounds_transformed (np.ndarray): (N, 4, 3) array containing all of the
-        XYZ coordinates for each bounding box, rotated centered at each road 
+        bounds_transformed (np.ndarray): (N, 8, 3) array containing all of the
+        XYZ coordinates for each bounding box, rotated and centered at each road 
         point of the trajectory.
     """
 
+    # bounds_xyz = np.zeros((traj.getNumPoints(), 4, 3), dtype=np.float32)
+    bounds_xyz = np.zeros((traj.getNumPoints(), 8, 3), dtype=np.float32)
+    
+    # Each row A B C D E F G H represents the XYZ point of corners of cuboid ABCDEFGH's corners:
+    # A         B     ^x
+    #   E         F     >y (from the pov of the observer, along the road)
+    # C         D
+    #   G         H
+    #
+    # (note that ABCD is above, while EFGH is below)
+    #
+    # A   B
+    #   E   F
+    #                 ^y
+    #                   >x (Cartesian, bounding boxes are generated with THIS coordinate system)
+    # 
+    # C   D
+    #   G   H
+    #
+    # (note that ABCD is above, while EFGH is below)
+    
+    # Format:
+    # bounds_xyz[ROADPOINT, ABCDEFGHINDEX_0to7, XYZINDEX_0to2]
+    # example: bounds_xyz[:, 0, 0] sets the x-coordinate of all the A points
+
+    # Set x-coordinate of all ABCDEFGH points
+    bounds_xyz[:, 0, 0] = lengths[:, 0] # A
+    bounds_xyz[:, 1, 0] = lengths[:, 1] # B
+    bounds_xyz[:, 2, 0] = lengths[:, 0] # C
+    bounds_xyz[:, 3, 0] = lengths[:, 1] # D
+    bounds_xyz[:, 4, 0] = lengths[:, 0] # E
+    bounds_xyz[:, 5, 0] = lengths[:, 1] # F
+    bounds_xyz[:, 6, 0] = lengths[:, 0] # G
+    bounds_xyz[:, 7, 0] = lengths[:, 1] # H
+
+    # Set y-coordinate of all ABCDEFGH points
+    bounds_xyz[:, 0, 1] = widths[:, 1] # A
+    bounds_xyz[:, 1, 1] = widths[:, 1] # B
+    bounds_xyz[:, 2, 1] = widths[:, 0] # C 
+    bounds_xyz[:, 3, 1] = widths[:, 0] # D
+    bounds_xyz[:, 4, 1] = widths[:, 1] # E
+    bounds_xyz[:, 5, 1] = widths[:, 1] # F
+    bounds_xyz[:, 6, 1] = widths[:, 0] # G 
+    bounds_xyz[:, 7, 1] = widths[:, 0] # H
+    
+    # Set z-coordinate of all ABCDEFGH points
+    bounds_xyz[:, 0, 2] = heights[:, 1] # A
+    bounds_xyz[:, 1, 2] = heights[:, 1] # B
+    bounds_xyz[:, 2, 2] = heights[:, 1] # C
+    bounds_xyz[:, 3, 2] = heights[:, 1] # D
+    bounds_xyz[:, 4, 2] = heights[:, 0] # E
+    bounds_xyz[:, 5, 2] = heights[:, 0] # F
+    bounds_xyz[:, 6, 2] = heights[:, 0] # G
+    bounds_xyz[:, 7, 2] = heights[:, 0] # H
+
+    
+    ## Now we will transform our bounding points along the trajectory
+    # Rotate an xyz point by our rotation matrix R to translate it
+    # There is probably a way to vectorize this, but I don't feel like doing indexing magic
+    
     # Obtain rotation matrices, converted from the legacy MATLAB code
     rotation_matrices = np.reshape(
         np.hstack((traj.getForwards(), traj.getLeftwards(), traj.getUpwards())),
@@ -98,56 +156,19 @@ def generate_bounding_boxes(
     
     rotation_matrices = np.transpose(rotation_matrices, (2,1,0))
 
-
-    bounds_xyz = np.zeros((traj.getNumPoints(), 4, 3))
-    
-    # Each row A B C D represents the points of corners of rectangle ABCD's corners:
-    # A         B   ^x
-    #      M          >y (from the pov of the observer)
-    # C         D
-    #
-    # A   B
-    # 
-    #               ^y
-    #   M             >x (Cartesian, this will be rotated)
-    # 
-    # 
-    # C   D
-    
-    # Format:
-    # bounds_xyz[ROADPOINT, ABCDINDEX_0to3, XYZINDEX_0to2]
-    # example: bounds_xyz[:, 0, 0] sets the x-coordinate of all the A points
-
-    # Set x-coordinate of all ABCD points
-    bounds_xyz[:, 0, 0] = lengths[:, 0] # A
-    bounds_xyz[:, 1, 0] = lengths[:, 0] # B
-    bounds_xyz[:, 2, 0] = lengths[:, 1] # C
-    bounds_xyz[:, 3, 0] = lengths[:, 1] # D
-
-    # Set y-coordinate of all ABCD points
-    bounds_xyz[:, 0, 1] = widths[:, 1] # A
-    bounds_xyz[:, 1, 1] = widths[:, 0] # B
-    bounds_xyz[:, 2, 1] = widths[:, 1] # C 
-    bounds_xyz[:, 3, 1] = widths[:, 0] # D
-    
-    # We don't care about the z-coordinate, assume that our bounding box
-    # is flat (on the plane z=0). We will take the z-coordinate anyways.
-    
-    # Transform our bounding points to be along the trajectory
-    # Rotate an xyz point by our rotation matrix R to translate it
-    # There is probably a way to vectorize this, but I don't feel like doing indexing magic
     bounds_transformed = []
+    #NOTE I think the bound generation and rotation looks fine so far.
     for i in range(traj.getNumPoints()):
         boundpts = bounds_xyz[i,:,:]
         rotmatr_i = rotation_matrices[:,:,i]
+        transformed_pts = np.matmul(boundpts, rotmatr_i) + traj.getRoadPoints()[i, :]
         
-        # @ is matrix multiplication
-        transformed_pts = boundpts @ rotmatr_i + traj.getRoadPoints()[i,:]
         bounds_transformed.append(transformed_pts)
     
     return np.asarray(bounds_transformed)
 
-def slice_road_from_bound(las_x: np.ndarray, las_y: np.ndarray, bound_abcd: np.ndarray) -> np.ndarray:
+#TODO Fix the criteria such that these edges do not look jagged
+def slice_road_from_bound(las_xyz: np.ndarray, bound_abcdefgh: np.ndarray) -> np.ndarray:
     """Slices the entire road from an individual bounding box, returning
     the indices of any query points that are within the bounding box.
 
@@ -156,50 +177,49 @@ def slice_road_from_bound(las_x: np.ndarray, las_y: np.ndarray, bound_abcd: np.n
         point cloud.
         las_y (np.ndarray): The y-coordinates of all the points in the input
         point cloud.
-        bound_abcd (np.ndarray): (4, 2) array of XY points that define the
+        bound_abcdefgh (np.ndarray): (8, 3) array of XY points that define the
         bounding box:
-        [[Ax, Ay],
-         [Bx, By],
-         [Cx, Cy],
-         [Dx, Dy]]
+        [[Ax, Ay, Az], (top rectangle)
+         [Bx, By, Bz],
+         [Cx, Cy, Cz],
+         [Dx, Dy, Dz],
+         [Ex, Ey, Ez], (bottom rectangle)
+         [Fx, Fy, Fz],
+         [Gx, Gy, Gz],
+         [Hx, Hy, Hz]]
+         
+        This is what each bounding box looks like:
+        A         B     ^x
+          E         F     >y (from the pov of the observer, along the road)
+        C         D
+          G         H
 
     Returns:
         idx (np.ndarray): Indices of the .las point cloud that are in
         the bounding box.
     """
     
-    # Here we will do the equivalent of projecting the bounding box and the .las points
-    # onto the XY plane by ignoring the z-coordinate. The z-coordinate does not matter 
-    # very much here; we will take all points in the bounding box.
+    # Find the three perpendicular directions of bounding cuboid ABCDEFGH.
+    # In this case:
+    # i (AB), j (AC), k (AE)
     #
-    # A         B   ^x
-    #      M          >y (from the POV of the observer)
-    # C         D
+    # A point x lies within the box when these three conditions are satisfied:
 
-    # Per the vector definition:
-    # AM = (Mx-Ax, My-Ay)
-    # BM = (Mx-Bx, My-By)
-    AM = np.array([las_x            - bound_abcd[0, 0], las_y            - bound_abcd[0, 1]], dtype=np.float32).T
-    BM = np.array([las_x            - bound_abcd[1, 0], las_y            - bound_abcd[1, 1]], dtype=np.float32).T
     
-    # AB = (Bx-Ax, By-Ay)
-    # AC = (Cx-Ax, Cy-Ay)
-    AB = np.array([bound_abcd[1, 0] - bound_abcd[0, 0], bound_abcd[1, 1] - bound_abcd[0, 1]])
-    AC = np.array([bound_abcd[2, 0] - bound_abcd[0, 0], bound_abcd[2, 1] - bound_abcd[0, 1]])
+    # Determine whether or not some arbitary point(s) p is within a cuboid ABCDEFGH
+    # Perpendicular edges of the rectangular box (see the diagram above...)
+    i = bound_abcdefgh[1] - bound_abcdefgh[0] # i = AB = [Bx-Ax, By-Ay, Bz-Az]
+    j = bound_abcdefgh[2] - bound_abcdefgh[0] # j = AC = [Cx-Ax, Cy-Ay, Cz-Az]
+    k = bound_abcdefgh[4] - bound_abcdefgh[0] # k = AE = [Ex-Ax, Ey-Ay, Ez-Az]
 
-    # A query point (or points) M is/are in rectangle ABCD iff. the following condition
-    # (0 < np.dot(AM, AB) < np.dot(AB, AB)) and (0 < np.dot(BM, AC) < np.dot(AC, AC))
-    # is satisfied. Given that two vectors AB, and AC are perpendicular (seen above),
-    # we only need to evalulate the projections of the query point M on AB and AC.
-    # 
-    # M is only inside the rectangle if its projection onto line segments AB and AC are
-    # inside BOTH line segments.
-    # Source: https://math.stackexchange.com/questions/190111/how-to-check-if-a-point-is-inside-a-rectangle
+    p = las_xyz - bound_abcdefgh[0]           # p = Ap = [px-ax, py-ay, pz-az]
     
-    foo = (np.dot(AM, AB) > 0) & (np.dot(AM, AB) < np.dot(AB, AB))
-    bar = (np.dot(BM, AC) > 0) & (np.dot(BM, AC) < np.dot(AC, AC))
+    con0 = (np.dot(p, i) >= 0) & (np.dot(p, i) <= np.dot(i, i))
+    con1 = (np.dot(p, j) >= 0) & (np.dot(p, j) <= np.dot(j, j))
+    con2 = (np.dot(p, k) >= 0) & (np.dot(p, k) <= np.dot(k, k))
 
-    idx = np.where(foo & bar)[0] 
+    idx = np.where(con0 & con1 & con2)[0]
+    
     return idx
 
 def remove_scenery(bounds: np.ndarray, las: laspy.LasData, las_filename: str) -> None:
@@ -210,16 +230,14 @@ def remove_scenery(bounds: np.ndarray, las: laspy.LasData, las_filename: str) ->
     to obtain the trimmed road section.
 
     Args:
-        bounds (np.ndarray): (N, 4, 3) array of XYZ points that defines each of the
+        bounds (np.ndarray): (N, 8, 3) array of XYZ points that defines each of the
         bounds at a specific road point, where N is the number of road points.
         las (laspy.LasData): Our input point cloud.
         las_filename (str): The filename of out input point cloud.
     """
     
-    # Each one of our processes will have a copy of the las data
-    # instead of taking from the las data itself, so that our multiprocessing works
-    las_x = las.x
-    las_y = las.y
+    las_xyz = np.array([las.x, las.y, las.z], dtype=np.float32).T
+    
     '''
     import multiprocessing as mp
     from tqdm import tqdm
@@ -259,15 +277,15 @@ def remove_scenery(bounds: np.ndarray, las: laspy.LasData, las_filename: str) ->
     cores = (joblib.cpu_count() - 1)
 
     # Define the arguments that will be called upon in parallel
-    slice_args = [(las_x, las_y, bounds[frame, :, 0:2]) for frame in range(total_points)]
+    slice_args = [(las_xyz, bounds[frame, :, :]) for frame in range(total_points)]
     
     tStart = perf_counter()
     print("")
     indices = Parallel(n_jobs=cores, backend='loky')( # Switched to loky backend to maybe suppress errors?
-        delayed(slice_road_from_bound)(arg_las_x, arg_las_y, arg_bounds)
-        for arg_las_x, arg_las_y, arg_bounds in tqdm(slice_args, 
-                                                     total=total_points, 
-                                                     desc=f"Slicing point cloud")
+        delayed(slice_road_from_bound)(arg_las_xyz, arg_bounds)
+        for arg_las_xyz, arg_bounds in tqdm(slice_args, 
+                                            total=total_points, 
+                                            desc=f"Slicing point cloud")
         )
     tStop = perf_counter()
     print(f"\nRemoving overlapped points...")
@@ -331,14 +349,17 @@ def open_las(args: argparse.Namespace) -> laspy.LasData:
 # writes the XYZ bounding points for visualization in cloudcompare
 def debug_write_bounds(bounds: np.ndarray, las_filename: str):
     # bounds is given as a (road_pts, 4, 3) array
-    bounds = bounds.reshape(((bounds.shape[0]*4), 3), order='F')
+    # bounds = bounds.reshape(((bounds.shape[0]*8), 3), order='F')
     las_filename = os.path.splitext(las_filename)[0]
     
     output_folder = os.path.join(ROOT2, "trimmed")
     if not os.path.exists(output_folder):
       os.makedirs(output_folder) 
     
-    np.savetxt(f"{output_folder}/{las_filename}_boundingpoints.csv", bounds, delimiter=',')
+    # np.savetxt(f"{output_folder}/{las_filename}_boundingpoints.csv", bounds[:-1:20, :], delimiter=',')
+    np.savetxt(f"{output_folder}/{las_filename}_boundingpoints.csv", bounds[50, :, :], delimiter=',')
+    # np.savetxt(f"{output_folder}/{las_filename}_boundingpoints.csv", bounds, delimiter=',')
+    print(f"Debug bounding points written to {output_folder}/{las_filename}")
 
     return
 
@@ -347,11 +368,11 @@ def main():
     args = file_tools.parse_cmdline_args()
     traj = file_tools.obtain_trajectory_details(args)
 
-    widths, lengths = generate_bounds(traj)
-    bounds = generate_bounding_boxes(traj, widths, lengths)
+    widths, lengths, heights = generate_bounds(traj)
+    bounds = generate_bounding_boxes(traj, widths, lengths, heights)
     
     las, las_filename = open_las(args)
-    remove_scenery(bounds, las, las_filename)
+    # remove_scenery(bounds, las, las_filename)
     
     # For testing
     debug_write_bounds(bounds, las_filename)
