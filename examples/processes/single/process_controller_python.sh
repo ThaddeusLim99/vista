@@ -2,19 +2,19 @@
 
 ### USER INPUT HERE ###
 processes=6
-LASFILE="VL-Veg-81604S_C1L1_08000_04000.las"
-JSONFILE=velodyne_alpha_128.json # Do not put quotes here
+LASFILE="VL-Veg-81604S_C1L1_08000_04000_y_trimmed.las"
+JSONFILE=velodyne_alpha_128_front.json # Do not put quotes here
 observer_height=1.8
 PAD_OUTPUTS=true
-RUN_OCCLUSION=false
+RUN_OCCLUSION=true
 
 #TODO Parse the sensor config file from shell script and then pass the variables to each process
 # You can input the sensor .json for now
 RESOLUTION=0.11
 PITCH_MIN=-25
 PITCH_MAX=15
-YAW_MIN=-180
-YAW_MAX=180
+YAW_MIN=-90
+YAW_MAX=90
 RANGE=245
 CULLING_R=2
 
@@ -26,6 +26,7 @@ if $PAD_OUTPUTS
 then
     # Run the entire road section, padded with the sensor range
     STARTFRAME=$RANGE
+    #STARTFRAME=1145
     ENDFRAME=$((`cat examples/Trajectory/${LASFILE%.*}/forwards.csv | wc -l`-$RANGE))
 else
     STARTFRAME=0

@@ -59,7 +59,8 @@ class LidarSynthesis:
         ### Basic properties required for setting up the synthesizer including
         # the dimensionality and resolution of the image representation space
         self._res = np.array([yaw_res, pitch_res], dtype=np.float32)
-        self._fov = np.array([input_yaw_fov, input_pitch_fov], dtype=np.float32)
+        #self._fov = np.array([input_yaw_fov, input_pitch_fov], dtype=np.float32)
+        self._fov = np.array([yaw_fov, pitch_fov], dtype=np.float32) # Called from the shell script itself
         self._fov_rad = self._fov * np.pi / 180.0
 
         self._dims = (self._fov[:, 1] - self._fov[:, 0]) / self._res
@@ -75,6 +76,7 @@ class LidarSynthesis:
         # but excluding the origin itself.
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
         print(self.device)
+
         cull_axis = torch.arange(-culling_r, culling_r + 1)
         offsets = torch.meshgrid(cull_axis, cull_axis)
         offsets = torch.reshape(torch.stack(offsets, axis=-1), (-1, 2))  # (Nx2)
