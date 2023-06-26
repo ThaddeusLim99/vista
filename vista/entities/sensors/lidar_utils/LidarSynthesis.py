@@ -187,6 +187,7 @@ class LidarSynthesis:
             pitch = -angles[:, 1] # elevation
                                   # depths is given already
 
+            '''This is where we will 'voxelize' our point cloud; commented out because this isn't being used
             # Spherically voxelize our point cloud
             # Divide spherical coordinates by the spherical voxel size define
             # by the sensor precision (manually defined for range)
@@ -209,18 +210,18 @@ class LidarSynthesis:
                 )*(
                 yaw_high-yaw_low)
 
-            # TODO Parse sensor configuration input to LidarSynthesis.py
-            #max_volume = (1/3)*(
-            #    torch.pow(SENSORCON_RANGE_HIGH, 3)-torch.pow(SENSORCON_RANGE_LOW, 3)
-            #    )*(
-            #    torch.cos(self._fov_rad[1, 0])-torch.cos(self._fov_rad[1, 1])
-            #    )*(
-            #    self._fov_rad[0, 1]-self._fov_rad[0, 0])
+            max_volume = (1/3)*(
+                torch.pow(SENSORCON_RANGE_HIGH, 3)-torch.pow(SENSORCON_RANGE_LOW, 3)
+                )*(
+                torch.cos(self._fov_rad[1, 0])-torch.cos(self._fov_rad[1, 1])
+                )*(
+                self._fov_rad[0, 1]-self._fov_rad[0, 0])
 
-            # azimuth_capacity = torch.floor((self._fov[0,1]-self._fov[0,0])/self._res[0])
-            # elevation_capacity = torch.floor((self._fov[1,1]-self._fov[1,0])/self._res[1])
-            # radius_capacity = torch.floor((SENSORCON_RANGE_HIGH-SENSORCON_RANGE_LOW)/0.1)
-            # total_voxels = azimuth_capacity * elevation_capacity * radius_capacity
+            azimuth_capacity = torch.floor((self._fov[0,1]-self._fov[0,0])/self._res[0])
+            elevation_capacity = torch.floor((self._fov[1,1]-self._fov[1,0])/self._res[1])
+            radius_capacity = torch.floor((SENSORCON_RANGE_HIGH-SENSORCON_RANGE_LOW)/0.1)
+            total_voxels = azimuth_capacity * elevation_capacity * radius_capacity
+            '''
 
             import math
 
