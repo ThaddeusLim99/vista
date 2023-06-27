@@ -2,7 +2,7 @@
 
 ## Overview
 
-After generating each output, we can perform the data rate calculations necessary for each scene, with parameters that are given by the sensor. In order to do so, we need to voxelize the scene in spherical coordinates first, and then apply our criteria for calculating $\Delta$ for the data rate. *($\Delta$ directly influences the data rate required to process each scene)*
+After generating each output, we can perform the data rate calculations necessary for each scene, with parameters that are given by the sensor. In order to do so, we need to voxelize the scene in spherical coordinates first, and then apply our criteria for calculating $\Delta$ for the data rate. $\Delta$ *directly influences the data rate required to process each scene.*
 
 ### Calculations
 
@@ -17,13 +17,13 @@ From the paper that this work is based off on, we will define the following para
 - range precision $\delta_{R}$ of our sensor in m (assumed constant)
 - azimuth precision $\delta_{\theta}$ of our sensor in degrees (assumed constant)
 - elevation precision $\delta_{\phi}$ of our sensor in degrees (assumed constant)
-- Fraction or volume of occupied voxels $\Delta$, based on our criteria *(this is the only variable that changes)*
+- Fraction or volume of occupied voxels $\Delta$, based on our criteria: *(this is the only variable that changes)*
   - Simple method: $\Delta = \frac{\mathrm{voxels\ occupied}}{\mathrm{total\ voxels}}$
   - Volumetric method: $\Delta = \frac{\mathrm{total\ volume\ of\ occupied\ voxels}}{\mathrm{total\ volume\ bounded\ by\ FOV}}$ *(more on this later.)*
 
 With these parameters, the atomic norm data rate of our sensor is calculated using the formula:
 
-$$\mathrm{AN\_data\_rate}=\frac{R\theta\phi}{\delta_{R}\delta_{\theta}\delta_{\phi}}\frac{32Fb\Delta\log({\frac{1}{2\Delta}})}{3 {SNR}_{\mathrm{max\_range}}}$$
+$$AN\_data\_rate=\frac{R\theta\phi}{\delta_{R}\delta_{\theta}\delta_{\phi}}\frac{32Fb\Delta\log({\frac{1}{2\Delta}})}{3 {SNR}_{\mathrm{max\_range}}}$$
 
 The derivation of this formula can be found in the paper.
 
@@ -61,7 +61,7 @@ From the indices of the occupied voxels, we can convert them back into real sphe
 
 From determining which voxels are occupied, as well as their locations, $\Delta$ is determined using two methods that we have defined. The methods are as follows:
 
-- Simple method: $\Delta = \frac{\mathrm{\#\ occupied\ voxels}}{\mathrm{total\ voxels}}$
+- Simple method: $\Delta = \frac{\mathrm{number\ occupied\ voxels}}{\mathrm{total\ voxels}}$
   - $\mathrm{total\ voxels}=\frac{R_{\mathrm{high}}-R_{\mathrm{low}}}{\delta_{R}} \times \frac{\theta_{\mathrm{high}}-\theta_{\mathrm{low}}}{\delta_{\theta}} \times \frac{\phi_{\mathrm{high}}-\phi_{\mathrm{low}}}{\delta_{\phi}}$
   - Occupied voxels have equal contribution to the delta.
 - Volumetric method: $\Delta = \frac{\mathrm{total\ volume\ of\ occupied\ voxels}}{\mathrm{total\ volume\ bounded\ by\ FOV}}$
