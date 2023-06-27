@@ -75,10 +75,10 @@ class LidarSynthesis:
         # Create a list of offset coordinates within a radius R of the origin,
         # but excluding the origin itself.
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
-        print(self.device)
+        # print(self.device)
 
         cull_axis = torch.arange(-culling_r, culling_r + 1)
-        offsets = torch.meshgrid(cull_axis, cull_axis)
+        offsets = torch.meshgrid(cull_axis, cull_axis, indexing="ij")
         offsets = torch.reshape(torch.stack(offsets, axis=-1), (-1, 2))  # (Nx2)
         offsets = offsets[torch.any(offsets != 0, axis=1)]  # remove origin
         offsets = offsets.to(self.device)
@@ -131,7 +131,7 @@ class LidarSynthesis:
         """
         # Rigid transform of points
         R = transform.rot2mat(rot)
-        pcd = pcd.transform(R, trans)
+        pcd = pcd.transform(R, trans) # TODO Write the intensity
 
         # Convert from new pointcloud to dense image
         visible = self._pcd2sparse(
