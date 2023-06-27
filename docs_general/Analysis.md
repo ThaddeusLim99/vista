@@ -23,7 +23,7 @@ From the paper that this work is based off on, we will define the following para
 
 With these parameters, the atomic norm data rate of our sensor is calculated using the formula:
 
-$$\mathrm{Data\ rate}_{AN}=\frac{R\theta\phi}{\delta_{R}\delta_{\theta}\delta_{\phi}}\frac{32Fb\Delta\log({\frac{1}{2\Delta}})}{3 {SNR}_{\mathrm{max\_range}}}$$
+$$\mathrm{Data\ rate}=\frac{R\theta\phi}{\delta_{R}\delta_{\theta}\delta_{\phi}}\frac{32Fb\Delta\log({\frac{1}{2\Delta}})}{3 {SNR}_{\mathrm{max\_range}}}$$
 
 The derivation of this formula can be found in the paper.
 
