@@ -21,9 +21,11 @@ From the paper that this work is based off on, we will define the following para
   - Simple method: $\Delta = \frac{\mathrm{voxels\ occupied}}{\mathrm{total\ voxels}}$
   - Volumetric method: $\Delta = \frac{\mathrm{total\ volume\ of\ occupied\ voxels}}{\mathrm{total\ volume\ bounded\ by\ FOV}}$ *(more on this later.)*
 
-the atomic norm data rate of our sensor is calculated using the formula:
+With these parameters, the atomic norm data rate of our sensor is calculated using the formula:
 
-$$AN\_data\_rate=\frac{R\theta\phi}{\delta_{R}\delta_{\theta}\delta_{\phi}}\frac{32Fb\Delta\log({\frac{1}{2\Delta}})}{3 {SNR}_{\mathrm{max\_range}}}$$
+$$\mathrm{AN\_data\_rate}=\frac{R\theta\phi}{\delta_{R}\delta_{\theta}\delta_{\phi}}\frac{32Fb\Delta\log({\frac{1}{2\Delta}})}{3 {SNR}_{\mathrm{max\_range}}}$$
+
+The derivation of this formula can be found in the paper.
 
 ### Voxelization
 
@@ -37,6 +39,7 @@ We will voxelize a scene, and then find which voxels within a particular scene a
 *Pretend that instead of a sphere, this solid is represented as a sensor FOV with a similar grid shown above.*
 
 </details>
+<br>
 
 #### Methodology for voxelization
 
@@ -62,7 +65,45 @@ From determining which voxels are occupied, as well as their locations, $\Delta$
   - $\mathrm{total\ voxels}=\frac{R_{\mathrm{high}}-R_{\mathrm{low}}}{\delta_{R}} \times \frac{\theta_{\mathrm{high}}-\theta_{\mathrm{low}}}{\delta_{\theta}} \times \frac{\phi_{\mathrm{high}}-\phi_{\mathrm{low}}}{\delta_{\phi}}$
   - Occupied voxels have equal contribution to the delta.
 - Volumetric method: $\Delta = \frac{\mathrm{total\ volume\ of\ occupied\ voxels}}{\mathrm{total\ volume\ bounded\ by\ FOV}}$
-  - $\mathrm{total\ volume\ bounded\ by\ FOV} = \int_{R_{\mathrm{low}}}^{R_{\mathrm{high}}} \!\! \int_{\theta_{\mathrm{low}}}^{\theta_{\mathrm{high}}} \!\! \int_{\phi_{\mathrm{low}}}^{\phi_{\mathrm{high}}} \,dR \, d\theta \, d\phi$
-  - The contribution of each occupied voxel is based on the range of the occupied voxel. Further voxels will take up more volume; corresponding to to greater processing requirements as we would expect with a real sensor.
+  - $\mathrm{total\ volume\ bounded\ by\ FOV} = \int_{R_{\mathrm{low}}}^{R_{\mathrm{high}}} \!\! \int_{\theta_{\mathrm{low}}}^{\theta_{\mathrm{high}}} \!\! \int_{\phi_{\mathrm{low}}}^{\phi_{\mathrm{high}}} R^2\sin{\phi}\,dR \, d\theta \, d\phi$ (Volume of the solid bounded by the sensor configuration)
+  - The contribution of each occupied voxel is based on the range of the occupied voxel. Further voxels will take up more volume; corresponding to greater processing requirements as we would expect with a real sensor.
 
 Now that we have calculated the delta using our criteria, we can simply obtain the data rate, as $\Delta$ is the only parameter that changes.
+
+## Usage
+
+The process mentioned above is implemented in both MATLAB and Python (the Python code is a bit faster), but both generate the same outputs.
+
+**Note: You do not need to put the command line flags. there is an option to manually select the paths via UI pop ups.**
+
+Python (works for multiple sets of Vista scenes):
+
+```bash
+python data_rate_vista.py --scenes {PATH_TO_SCENES} --numScenes {NUMBER_OF_OUTPUT_FOLDERS} --config {PATH_TO_CONFIG}
+```
+
+MATLAB via Ubuntu terminal (Should be in a different folder, from the command line. Works for only one Vista output folder.):
+
+*This is legacy code, the Python implementation was based from the MATLAB code.*
+
+```bash
+matlab -sd "{ABS_PATH_TO_ROOT}" -r "data_rate_vista_automated('{PATH_TO_CONFIG}', '{PATH_TO_VISTA_OUTPUT_FOLDER}', 1, 1)"
+```
+
+Alternatively, from the MATLAB command window:
+
+```matlab
+>> data_rate_vista_automated('PATH_TO_CONFIG', 'PATH_TO_VISTA_OUTPUT_FOLDER', true, true)
+```
+
+*The last two arguments of `data_rate_vista_automated` are for prepadded Vista outputs (this should always be set to 1 or true), and if you want to generate graphs (this should usually be set to 1 or true).*
+
+After running either program, you should see the graphs. The Python implementation has more features, such as rolling average, power regression, and the ability to select multiple Vista output folders.
+
+### Graphs
+
+After running our analysis on all of the scenes, we should expect three types of graphs.
+
+- Data ratio: Just the delta value for both the simple and volumetric methods.
+- Data rate: The data rates for both methods calculated from their respective data ratios.
+- Delta ratio: This is a graph of $\frac{\Delta}{\Delta_{\mathrm{max}}}$ for the volumetric method only.
