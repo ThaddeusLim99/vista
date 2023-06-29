@@ -18,7 +18,7 @@ for (( i=startframe+3; i<endframe; i+=6 ))
 do
     if $run_occlusion
     then
-        python ./examples/conversion/convert_single.py --input ./examples/vista_traces/${file} --frame ${i} --range ${range} --process 4 --occlusion
+        python ./examples/conversion/convert_single.py --input ./examples/vista_traces/${file} --frame ${i} --range ${range} --process 4 --occlusion --yaw-min ${yaw_min} --yaw-max ${yaw_max} --pitch-min ${pitch_min} --pitch-max ${pitch_max} 
         python ./examples/basic_usage/sim_lidar.py --trace-path ./examples/vista_traces/lidar_4 --filename ${file} --frame ${i} --resolution ${resolution} --yaw-min ${yaw_min} --yaw-max ${yaw_max} --pitch-min ${pitch_min} --pitch-max ${pitch_max} --culling-r ${culling_r}
         rm ./examples/vista_traces/lidar_4/lidar_3d*
     else

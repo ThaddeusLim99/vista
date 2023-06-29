@@ -36,20 +36,26 @@ def generate_bounds(traj: file_tools.Trajectory) -> np.ndarray:
     # TODO Utilise variable widths (and maybe lengths) later on.
     # For now the sizes of each bounding box are assumed constant.
     num_points = traj.getNumPoints()
-    width = np.array([-1.5, 5.3]).reshape((1, 2))  # In the y-direction NOTE [-1.9, 5.7]
+    width = np.array([-1.9, 5.7]).reshape((1, 2))  # In the y-direction NOTE [-1.9, 5.7]
     widths = np.repeat(width, num_points, axis=0)
     
-    # From 450 onwards
-    #widths[450:, 0] = -7.9
-    #widths[450:, 1] = 12.8
+    '''
+    # From 1218 onwards
+    widths[1218:, 0] = -1.6
+    widths[1218:, 1] = 17.4
     
-    # From 2187 onwards
-    #widths[2187:, 0] = -9.4
-    #widths[2187:, 1] = 14.3
+    # From 1870 onwards
+    widths[1870:, 0] = -1.6
+    widths[1870:, 1] = 13.6
     
-    # From 2450 onwards
-    #widths[2450:, 0] = -7.9
-    #widths[2450:, 1] = 12.8
+    # From 2660 onwards
+    widths[2660:, 0] = -5.4
+    widths[2660:, 1] = 13.6
+     
+    # From 3180 onwards
+    widths[3180:, 0] = -1.6
+    widths[3180:, 1] = 6.0
+    '''
     
     
     length = np.array([-1.5, 1.5]).reshape((1, 2))  # In the x-direction

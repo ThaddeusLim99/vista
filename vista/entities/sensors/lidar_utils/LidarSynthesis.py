@@ -59,7 +59,8 @@ class LidarSynthesis:
         ### Basic properties required for setting up the synthesizer including
         # the dimensionality and resolution of the image representation space
         self._res = np.array([yaw_res, pitch_res], dtype=np.float32)
-        self._fov = np.array([input_yaw_fov, input_pitch_fov], dtype=np.float32)
+        #self._fov = np.array([input_yaw_fov, input_pitch_fov], dtype=np.float32)
+        self._fov = np.array([yaw_fov, pitch_fov], dtype=np.float32) # Called from the shell script itself
         self._fov_rad = self._fov * np.pi / 180.0
 
         self._dims = (self._fov[:, 1] - self._fov[:, 0]) / self._res
@@ -74,9 +75,10 @@ class LidarSynthesis:
         # Create a list of offset coordinates within a radius R of the origin,
         # but excluding the origin itself.
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu:0"
-        print(self.device)
+        # print(self.device)
+
         cull_axis = torch.arange(-culling_r, culling_r + 1)
-        offsets = torch.meshgrid(cull_axis, cull_axis)
+        offsets = torch.meshgrid(cull_axis, cull_axis, indexing="ij")
         offsets = torch.reshape(torch.stack(offsets, axis=-1), (-1, 2))  # (Nx2)
         offsets = offsets[torch.any(offsets != 0, axis=1)]  # remove origin
         offsets = offsets.to(self.device)
@@ -129,7 +131,7 @@ class LidarSynthesis:
         """
         # Rigid transform of points
         R = transform.rot2mat(rot)
-        pcd = pcd.transform(R, trans)
+        pcd = pcd.transform(R, trans) # TODO Write the intensity
 
         # Convert from new pointcloud to dense image
         visible = self._pcd2sparse(
@@ -185,6 +187,7 @@ class LidarSynthesis:
             pitch = -angles[:, 1] # elevation
                                   # depths is given already
 
+            '''This is where we will 'voxelize' our point cloud; commented out because this isn't being used
             # Spherically voxelize our point cloud
             # Divide spherical coordinates by the spherical voxel size define
             # by the sensor precision (manually defined for range)
@@ -207,18 +210,18 @@ class LidarSynthesis:
                 )*(
                 yaw_high-yaw_low)
 
-            # TODO Parse sensor configuration input to LidarSynthesis.py
-            #max_volume = (1/3)*(
-            #    torch.pow(SENSORCON_RANGE_HIGH, 3)-torch.pow(SENSORCON_RANGE_LOW, 3)
-            #    )*(
-            #    torch.cos(self._fov_rad[1, 0])-torch.cos(self._fov_rad[1, 1])
-            #    )*(
-            #    self._fov_rad[0, 1]-self._fov_rad[0, 0])
+            max_volume = (1/3)*(
+                torch.pow(SENSORCON_RANGE_HIGH, 3)-torch.pow(SENSORCON_RANGE_LOW, 3)
+                )*(
+                torch.cos(self._fov_rad[1, 0])-torch.cos(self._fov_rad[1, 1])
+                )*(
+                self._fov_rad[0, 1]-self._fov_rad[0, 0])
 
-            # azimuth_capacity = torch.floor((self._fov[0,1]-self._fov[0,0])/self._res[0])
-            # elevation_capacity = torch.floor((self._fov[1,1]-self._fov[1,0])/self._res[1])
-            # radius_capacity = torch.floor((SENSORCON_RANGE_HIGH-SENSORCON_RANGE_LOW)/0.1)
-            # total_voxels = azimuth_capacity * elevation_capacity * radius_capacity
+            azimuth_capacity = torch.floor((self._fov[0,1]-self._fov[0,0])/self._res[0])
+            elevation_capacity = torch.floor((self._fov[1,1]-self._fov[1,0])/self._res[1])
+            radius_capacity = torch.floor((SENSORCON_RANGE_HIGH-SENSORCON_RANGE_LOW)/0.1)
+            total_voxels = azimuth_capacity * elevation_capacity * radius_capacity
+            '''
 
             import math
 

@@ -189,6 +189,7 @@ def main(args):
             f["xyz"] = [xyz]
             f["intensity"] = [las.intensity[indices]]
 
+        # Verify if intermediate file is being written
         f2 = h5py.File(f"./examples/vista_traces/lidar_{args.process}/lidar_3d.h5", "r")
         print(f2["timestamp"])
         print(f2["xyz"])
