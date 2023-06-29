@@ -10,7 +10,7 @@ From the paper that this work is based off on, we will define the following para
 
 - refresh rate of the assumed system $F$ (assumed constant)
 - bits per measurement $b$ in the system's ADC converter (assumed constant)
-- max signal-to-noise ratio ${SNR}_{\mathrm{max\_range}}$ (assumed constant)
+- max signal-to-noise ratio ${SNR}_{\mathrm{max\ range}}$ (assumed constant)
 - total range $R$ that the sensor covers in m (assumed constant)
 - total azimuth $\theta$ that the sensor covers in degrees (assumed constant)
 - total elevation $\phi$ that the sensor covers in degrees (assumed constant)
@@ -23,7 +23,7 @@ From the paper that this work is based off on, we will define the following para
 
 With these parameters, the atomic norm data rate of our sensor is calculated using the formula:
 
-$$\mathrm{Data\ rate}=\frac{R\theta\phi}{\delta_{R}\delta_{\theta}\delta_{\phi}}\frac{32Fb\Delta\log({\frac{1}{2\Delta}})}{3 {SNR}_{\mathrm{max\_range}}}$$
+$$\mathrm{Data\ rate}=\frac{R\theta\phi}{\delta_{R}\delta_{\theta}\delta_{\phi}}\frac{32Fb\Delta\log({\frac{1}{2\Delta}})}{3 {SNR}_{\mathrm{max\ range}}}$$
 
 The derivation of this formula can be found in the paper.
 
@@ -65,7 +65,7 @@ From determining which voxels are occupied, as well as their locations, $\Delta$
   - $\mathrm{total\ voxels}=\frac{R_{\mathrm{high}}-R_{\mathrm{low}}}{\delta_{R}} \times \frac{\theta_{\mathrm{high}}-\theta_{\mathrm{low}}}{\delta_{\theta}} \times \frac{\phi_{\mathrm{high}}-\phi_{\mathrm{low}}}{\delta_{\phi}}$
   - Occupied voxels have equal contribution to the delta.
 - Volumetric method: $\Delta = \frac{\mathrm{total\ volume\ of\ occupied\ voxels}}{\mathrm{total\ volume\ bounded\ by\ FOV}}$
-  - $\mathrm{total\ volume\ bounded\ by\ FOV} = \int_{R_{\mathrm{low}}}^{R_{\mathrm{high}}} \int_{\theta_{\mathrm{low}}}^{\theta_{\mathrm{high}}}  \int_{\phi_{\mathrm{low}}}^{\phi_{\mathrm{high}}} R^2\sin{\phi}\ dR \ d\theta \ d\phi$ (Volume of the solid bounded by the sensor configuration)
+  - $\mathrm{total\ volume\ bounded\ by\ FOV} = \int_{R_{\mathrm{low}}}^{R_{\mathrm{high}}} \int_{\theta_{\mathrm{low}}}^{\theta_{\mathrm{high}}}  \int_{\phi_{\mathrm{low}}}^{\phi_{\mathrm{high}}} R^2\sin{\phi}\ d\phi \ d\theta \ dR$ (Volume of the solid bounded by the sensor configuration)
   - The contribution of each occupied voxel is based on the range of the occupied voxel. Further voxels will take up more volume; corresponding to greater processing requirements as we would expect with a real sensor.
 
 Now that we have calculated the delta using our criteria, we can simply obtain the data rate, as $\Delta$ is the only parameter that changes.
