@@ -81,9 +81,6 @@ class InteractiveDataRateGraph:
             annotations = []
             self.dcAxes.append(DataClassAxes("fig1",self.ax1, line, annotations,["O"]))
 
-        #self.fig1.canvas.mpl_connect('button_press_event', self.on_button_press)
-        #self.fig1.canvas.mpl_connect('button_press_event', self.on_button_remove)
-
         #dont show this for if numScenes > 1
         #number 3 (show original outputs for multiple graphs wih multiple y-scale)
         if self.numScenes > 1:
@@ -125,9 +122,6 @@ class InteractiveDataRateGraph:
                     
                     annotations = []
                     self.dcAxes.append(DataClassAxes("fig2",ax2_new, line, annotations,["O"]))
-
-        #self.fig2.canvas.mpl_connect('button_press_event', self.on_button_press)
-        #self.fig2.canvas.mpl_connect('button_press_event', self.on_button_remove)
                     
         #number 4.1 (like 2 but with rolling averages)
         self.fig3.canvas.manager.set_window_title(f'{self.windowTitle}') 
@@ -151,9 +145,6 @@ class InteractiveDataRateGraph:
  
             annotations = []
             self.dcAxes.append(DataClassAxes("fig3",self.ax3, line, annotations,["O","A"]))       
-
-        #self.fig3.canvas.mpl_connect('button_press_event', self.on_button_press)
-        #self.fig3.canvas.mpl_connect('button_press_event', self.on_button_remove)
 
         #dont show this for if numScenes > 1
         #number 4.2 (like 3 but with rolling averages)
@@ -201,9 +192,6 @@ class InteractiveDataRateGraph:
                     annotations = []
                     self.dcAxes.append(DataClassAxes("fig4",ax4_new, line, annotations,["O","A"]))
 
-        #self.fig4.canvas.mpl_connect('button_press_event', self.on_button_press)
-        #self.fig4.canvas.mpl_connect('button_press_event', self.on_button_remove)
-
     def connect_graph(self):
         print("connect")
         self.fig1.canvas.mpl_connect('button_press_event', self.on_button_press)
@@ -229,14 +217,6 @@ class InteractiveDataRateGraph:
             #print("press button: " + str(event.button))
             print((event.canvas.figure).get_label())
             currFig = (event.canvas.figure).get_label()
-            
-            #for dca in self.dcAxes:
-            #    #print(dca.lines)
-            #    for i in range(len(dca.lines)):
-            #        if dca.fig == currFig:
-            #            #obtain dca
-            #            print((dca.lines[i][0]).contains(event)[0])
-                
 
             all_picked = [dca for dca in self.dcAxes for i in range(len(dca.lines)) if dca.fig == currFig]
             #print(all_picked)
@@ -428,8 +408,7 @@ class InteractiveMethodCompareGraph:
             currFig = (event.canvas.figure).get_label()     
 
             all_picked = [dca for dca in self.dcAxes for i in range(len(dca.lines)) if dca.fig == currFig]
-            print(all_picked)
-            #all_picked = [dca for dca in self.dcAxes if dca.line.contains(event)[0]]
+            #print(all_picked)
             if not all_picked:
                 return  # nothing was picked
 

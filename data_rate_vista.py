@@ -438,60 +438,6 @@ def data_rate_vista_automated(
     
     #complementary_colours = [['-r','-c'],['-g','-m'],['-b','-y']]
     complementary_colours = [['r','c'],['g','m'],['b','y']]
-    
-    ## Making graph
-    '''
-    if enable_graphical:
-        if enable_regression:
-            fig1, ax1 = displayGraph(outmatrix_volume,outmatrix_volume,outmatrix_volume_ave,'Volume Method',\
-                'Data ratio of volumetric voxelization method','distance (m)',\
-                    'volume ratio (volume of occupied voxel/total volume in sensor)',True,True,True)
-    
-            fig2, ax2 = displayGraph(outmatrix_count,outmatrix_count,outmatrix_count_ave,'Simple Method',\
-                'Data ratio of simple voxelization method','distance (m)',\
-                    'voxel count ratio (number of occupied voxel/total count in sensor)',True,True,True)
-
-            fig3, ax3 = displayGraph(outmatrix_volume2,outmatrix_volume2,outmatrix_volume2_ave,'Volume Method',\
-                'Delta ratio of volumetric voxelization method','distance (m)',\
-                    'delta ratio (delta/max delta)',True,True,True)       
-
-            fig6, ax6 = displayGraph(outmatrix_count2,outmatrix_count2,outmatrix_count2_ave,'Simple method',\
-                'Delta ratio of simple voxelization method','distance (m)',\
-                    'delta ratio (delta/max delta)',True,True,True)
-        else:
-        '''
-            #TO UPDATE
-    '''
-            fig1 = plt.figure("Volume method (data ratio)")
-            fig1.suptitle("Data ratio of volumetric voxelization method", fontsize=12)
-            for i in range(numScenes):
-                plt.plot(outmatrix_volume[i][:, 0], outmatrix_volume[i][:, 1], f'{complementary_colours[np.mod(i,3)][0]}')
-            plt.xlabel("distance (m)")
-            plt.ylabel("volume ratio (volume of occupied voxel/total volume in sensor)")
-
-            #plt.show(block=False)
-            plt.show() 
-            
-            fig2 = plt.figure("Simple method")
-            fig2.suptitle("Data ratio of simple voxelization method", fontsize=12)
-            for i in range(numScenes):
-                plt.plot(outmatrix_count[i][:, 0], outmatrix_count[i][:, 1], f'{complementary_colours[np.mod(i,3)][0]}')
-            plt.xlabel("distance (m)")
-            plt.ylabel("voxel count ratio (number of occupied voxel/total count in sensor)")
-            
-            #plt.show(block=False)
-            #plt.show() 
-            
-            fig3 = plt.figure("Volume method (delta ratio)")
-            fig3.suptitle("Delta ratio of volumetric voxelization method", fontsize=12)
-            for i in range(numScenes):
-                plt.plot(outmatrix_volume2[i][:, 0], outmatrix_volume2[i][:, 1], f'{complementary_colours[np.mod(i,3)][0]}')
-            plt.xlabel("distance (m)")
-            plt.ylabel("delta ratio (delta/max delta)")
-        
-            #plt.show(block=False) 
-            #plt.show()            
-        '''
             
     ## Data rate calculations
     # The calculation is the same one present on the paper we are basing this
@@ -547,10 +493,6 @@ def data_rate_vista_automated(
                 fig53.show()
                 
             else:
-                #fig4, ax4, fig42, ax42 = showDataRateGraph(outmatrix_volume,an_data_rate,\
-                #    an_data_rate_ave,'Volume method datarate','Data rate of volumetric voxelization method','distance (m)',\
-                #        'Atomic norm Data rate',False)
-
                 graph1 = graph_tools.InteractiveDataRateGraph(outmatrix_volume,an_data_rate,an_data_rate_ave,'Volume method datarate',\
                     'Data rate of volumetric voxelization method','distance (m)','Atomic norm Data rate',False,\
                         vistaoutput_path,numScenes)
@@ -566,13 +508,11 @@ def data_rate_vista_automated(
                 fig5.show()
                 fig52.show()         
             
-            #string = input()
-            
             graphPrefix = "graph_"
             figPrefix = "fig_"
             axPrefix = "ax_"
             var_num = 1
-            #locals()[graphPrefix + str(i)]
+
             for i in range(numScenes):
                 locals()[graphPrefix + str(i)] = graph_tools.InteractiveMethodCompareGraph(i,outmatrix_volume,\
                     outmatrix_count,an_data_rate_ave,an_data_rate2_ave,"Method datarate comparison",\
@@ -580,21 +520,7 @@ def data_rate_vista_automated(
                             "Data Rate of volumetric voxelization method",vistaoutput_path)
                 
                 locals()[figPrefix + str(i)], locals()[axPrefix + str(i)] = locals()[graphPrefix + str(i)].getGraph()  
-                locals()[figPrefix + str(i)].show()
-                '''
-                fig, ax = plt.subplots()
-                fig.canvas.manager.set_window_title(f"Method datarate comparison: {graph_tools.get_folder(vistaoutput_path[i])}") 
-                #fig.figure(f"Method datarate comparison: {get_folder(vistaoutput_path[i])}")
-                fig.suptitle("Data rate of volumetric voxelization method vs simple voxelization method", fontsize=12)
-                ax.plot(outmatrix_volume[i][:, 0], an_data_rate_ave[i],\
-                f'r', label=f'Rolling Average of volumetric method: {graph_tools.get_folder(vistaoutput_path[0])}')
-                ax.plot(outmatrix_count[i][:, 0], an_data_rate2_ave[i],\
-                f'g', label=f'Rolling Average of simple method: {graph_tools.get_folder(vistaoutput_path[0])}')  
-                ax.set_xlabel("distance (m)")
-                ax.set_ylabel(f"Data Rate of volumetric voxelization method: {graph_tools.get_folder(vistaoutput_path[i])}")
-                '''
-                #locals()[graphPrefix + str(i)] = graph_tools.mohamedGraph(fig, ax)
-                #locals()[figPrefix + str(i)], locals()[axPrefix + str(i)] = locals()[graphPrefix + str(i)].getGraph()        
+                locals()[figPrefix + str(i)].show()       
         else:
             #TO UPDATE
             '''
