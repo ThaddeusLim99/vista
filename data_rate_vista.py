@@ -439,55 +439,6 @@ def data_rate_vista_automated(
     #complementary_colours = [['-r','-c'],['-g','-m'],['-b','-y']]
     complementary_colours = [['r','c'],['g','m'],['b','y']]
     
-    
-    def displayGraph(xBarData,yBarData,yBarAverageData,windowTitle,graphTitle,xlabel,ylabel,isShowOriginal,isShowAverage,isShowRegression):
-        # Need to add main title and axis titles    
-        fig, ax = plt.subplots()
-        fig.canvas.manager.set_window_title(f'{windowTitle}') 
-        fig.suptitle(f"{graphTitle}", fontsize=12)
-        ax.set_ylabel(f"{ylabel} {graph_tools.get_folder(vistaoutput_path[0])}",color='r')
-        ax.tick_params(axis='y', colors='r')
-        for i in range(numScenes):
-            if i == 0:           
-                #ORIGINAL PLOT
-                if isShowOriginal:
-                    ax.plot(xBarData[i][:, 0], yBarData[i][:, 1],f'r', label=f'Original)')
-                #ROLLING AVERAHE
-                if isShowAverage:
-                    ax.plot(xBarData[i][:, 0], yBarAverageData[i],f'g', label=f'Rolling Average')
-                #BEST FIT LINE
-                if isShowRegression:
-                    poly, residual, _, _, _ = np.polyfit(xBarData[i][:, 0], yBarData[i][:, 1],deg=regression_power, full=True)
-                    ax.plot(xBarData[i][:, 0], np.polyval(poly, xBarData[i][:, 0]),f'b',\
-                        label=f'Fitted: {graph_tools.get_folder(vistaoutput_path[i])}')
-            else:
-                ax_new = ax.twinx()
-                #ORIGINAL PLOT
-                if isShowOriginal:
-                    ax_new.plot(xBarData[i][:, 0], yBarData[i][:, 1],f'r', label=f'Original)')
-                #ROLLING AVERAGE
-                if isShowAverage:
-                    ax_new.plot(xBarData[i][:, 0], yBarAverageData[i],f'g', label=f'Rolling Average')                    
-                #BEST FIT LINE
-                if isShowRegression:
-                    poly, residual, _, _, _ = np.polyfit(xBarData[i][:, 0], yBarData[i][:, 1],deg=regression_power, full=True)
-                    ax_new.plot(xBarData[i][:, 0], np.polyval(poly, xBarData[i][:, 0]),f'b',\
-                            label=f'Fitted: {graph_tools.get_folder(vistaoutput_path[i])}')
-                #Setting new Y-axis
-                ax_new.set_ylabel(f"{ylabel} {graph_tools.get_folder(vistaoutput_path[i])}"\
-                    , color=complementary_colours[np.mod(i,3)][0])
-                ax_new.tick_params(axis='y', colors=complementary_colours[np.mod(i,3)][0])   
-                
-                offset = (i - 1) * 0.7
-                ax_new.spines['right'].set_position(('outward', offset * 100))                 
-                
-        ax.set_xlabel(f"{xlabel}")
-        fig.legend()
-        #plt.ylabel("volume ratio (volume of occupied voxel/total volume in sensor)")
-        fig.tight_layout()
-        
-        return fig, ax            
-    
     ## Making graph
     '''
     if enable_graphical:
@@ -569,213 +520,68 @@ def data_rate_vista_automated(
     for itr in range(numScenes):
         an_data_rate_ave.append(rolling_average(an_data_rate[itr],0))
         an_data_rate2_ave.append(rolling_average(an_data_rate2[itr],0))
-
-    #green is for simple, red is for volumetric
-    #complementary_colours = [['-r','-c'],['-g','-m'],['-b','-y']]
-    def showDataRateGraph(xBarData,yBarData,yBarAverageData,windowTitle,graphTitle,xlabel,ylabel,isSimple):
-        if isSimple:
-            colourScheme = [['g','m'],['b','y']]
-        else:
-            colourScheme = [['r','c'],['b','y']]
-        
-        #number 2 (show original outputs for multiple graphs with only 1 y-scale)
-        fig1, ax1 = plt.subplots()
-        fig1.canvas.manager.set_window_title(f'{windowTitle}') 
-        fig1.suptitle(f"{graphTitle} with only 1 y-scale", fontsize=12)
-        ax1.set_ylabel(f"{ylabel} {graph_tools.get_folder(vistaoutput_path[0])}",color='r')
-        ax1.tick_params(axis='y', colors='r') 
-        
-        for i in range(numScenes):
-            #ORIGINAL PLOT
-            ax1.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {graph_tools.get_folder(vistaoutput_path[i])}')
-        
-        ax1.set_xlabel(f"{xlabel}")
-        fig1.legend()
-        fig1.tight_layout()
-        #cursor(hover=True)
-        
-        #dont show this for if numScenes > 1
-        #number 3 (show original outputs for multiple graphs wih multiple y-scale)
-        if numScenes > 1:
-            fig2, ax2 = plt.subplots()
-            fig2.canvas.manager.set_window_title(f'{windowTitle}') 
-            fig2.suptitle(f"{graphTitle} with multiple y-scale", fontsize=12)
-            ax2.set_ylabel(f"{ylabel} {graph_tools.get_folder(vistaoutput_path[0])}",color='r')
-            ax2.tick_params(axis='y', colors='r')
-            for i in range(numScenes):
-                if i == 0:
-                    #ORIGINAL PLOT
-                    ax2.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                        f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {graph_tools.get_folder(vistaoutput_path[i])}')
-                else:
-                    ax2_new = ax2.twinx()
-                    #ORIGINAL PLOT
-                    ax2_new.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                        f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {graph_tools.get_folder(vistaoutput_path[i])}')
-                    #Setting new Y-axis
-                    ax2_new.set_ylabel(f"Atomic norm Data rate {graph_tools.get_folder(vistaoutput_path[i])}"\
-                        , color=f'{colourScheme[np.mod(i,2)][0]}')
-                    ax2_new.tick_params(axis='y', colors=f'{colourScheme[np.mod(i,2)][0]}')   
-                    
-                    offset = (i - 1) * 0.7
-                    ax2_new.spines['right'].set_position(('outward', offset * 100))
-                        
-            ax2.set_xlabel(f"{xlabel}")
-            fig2.legend()
-            fig2.tight_layout()        
-            #cursor(hover=True)
-        
-        #number 4.1 (like 2 but with rolling averages)
-        fig3, ax3 = plt.subplots()
-        fig3.canvas.manager.set_window_title(f'{windowTitle}') 
-        fig3.suptitle(f"{graphTitle} with only 1 y-scale and average", fontsize=12)
-        ax3.set_ylabel(f"{ylabel} {graph_tools.get_folder(vistaoutput_path[0])}",color='r')
-        ax3.tick_params(axis='y', colors='r') 
-        
-        for i in range(numScenes):
-            #ORIGINAL PLOT
-            ax3.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {graph_tools.get_folder(vistaoutput_path[i])}', alpha=0.3)
-            ax3.plot(xBarData[i][:, 0], yBarAverageData[i],\
-                f'{colourScheme[np.mod(i,2)][1]}', label=f'Rolling Average: {graph_tools.get_folder(vistaoutput_path[i])}') 
-        
-        ax3.set_xlabel(f"{xlabel}")
-        fig3.legend()
-        fig3.tight_layout()
-        #cursor(hover=True)
-        
-        #dont show this for if numScenes > 1
-        #number 4.2 (like 3 but with rolling averages)
-        if numScenes > 1:
-            fig4, ax4 = plt.subplots()
-            fig4.canvas.manager.set_window_title(f'{windowTitle}') 
-            fig4.suptitle(f"{graphTitle} with multiple y-scale", fontsize=12)
-            ax4.set_ylabel(f"{ylabel} {graph_tools.get_folder(vistaoutput_path[0])}",color='r')
-            ax4.tick_params(axis='y', colors='r')
-            for i in range(numScenes):
-                if i == 0:
-                    #ORIGINAL PLOT
-                    ax4.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                        f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {graph_tools.get_folder(vistaoutput_path[i])}', alpha=0.3)
-                    ax4.plot(xBarData[i][:, 0], yBarAverageData[i],\
-                        f'{colourScheme[np.mod(i,2)][1]}', label=f'Rolling Average: {graph_tools.get_folder(vistaoutput_path[i])}')   
-                else:
-                    ax4_new = ax4.twinx()
-                    #ORIGINAL PLOT
-                    ax4_new.plot(xBarData[i][:, 0], yBarData[i][:, 0],\
-                        f'{colourScheme[np.mod(i,2)][0]}', label=f'Original: {graph_tools.get_folder(vistaoutput_path[i])}', alpha=0.3)
-                    ax4_new.plot(xBarData[i][:, 0], yBarAverageData[i],\
-                        f'{colourScheme[np.mod(i,2)][1]}', label=f'Rolling Average: {graph_tools.get_folder(vistaoutput_path[i])}')  
-                    #Setting new Y-axis
-                    ax4_new.set_ylabel(f"Atomic norm Data rate {graph_tools.get_folder(vistaoutput_path[i])}"\
-                        , color=f'{colourScheme[np.mod(i,2)][0]}')
-                    ax4_new.tick_params(axis='y', colors=f'{colourScheme[np.mod(i,2)][0]}')   
-                    
-                    offset = (i - 1) * 0.7
-                    ax4_new.spines['right'].set_position(('outward', offset * 100))
-                        
-            ax4.set_xlabel(f"{xlabel}")
-            fig4.legend()
-            fig4.tight_layout()        
-            #cursor(hover=True)        
-        
-        if numScenes > 1: 
-            return fig1, ax1, fig2, ax2, fig3, ax3, fig4, ax4      
-        else:
-            return fig1, ax1, fig3, ax3   
-
-    #print('\nDone!')
     
     ## Datarate graphs
     if enable_graphical:
         if enable_regression:
             # Need to add main title and axis titles 
             if numScenes > 1:    
-                #fig4, ax4, fig41, ax41, fig42, ax42, fig43, ax43 = showDataRateGraph(outmatrix_volume,an_data_rate,\
-                #    an_data_rate_ave,'Volume method datarate','Data rate of volumetric voxelization method','distance (m)',\
-                #        'Atomic norm Data rate',False)
-
-                graph1 = graph_tools.InteractiveGraph(outmatrix_volume,an_data_rate,an_data_rate_ave,'Volume method datarate',\
+                graph1 = graph_tools.InteractiveDataRateGraph(outmatrix_volume,an_data_rate,an_data_rate_ave,'Volume method datarate',\
                     'Data rate of volumetric voxelization method','distance (m)','Atomic norm Data rate',False,\
                         vistaoutput_path,numScenes)
-                #print("graph!")
-                #graph1.show()
+
                 fig4, ax4, fig41, ax41, fig42, ax42, fig43, ax43 = graph1.getGraph()
                 fig4.show()
                 fig41.show()
                 fig42.show()
                 fig43.show()
-                string = input()
-                #graph1, graph2, graph3, graph4 = showDataRateGraph(outmatrix_volume,an_data_rate,\
-                #    an_data_rate_ave,'Volume method datarate','Data rate of volumetric voxelization method','distance (m)',\
-                #        'Atomic norm Data rate',False)
-                
-                #fig1,ax1 = graph1.getGraph()
-                #fig2,ax2 = graph2.getGraph()
-                #fig3,ax3 = graph3.getGraph()         
-                #fig4,ax4 = graph4.getGraph()
 
-                #graph1.show()
+                graph2 = graph_tools.InteractiveDataRateGraph(outmatrix_count,an_data_rate2,\
+                    an_data_rate2_ave,'Simple method datarate','Data rate of simple voxelization method','distance (m)',\
+                        'Atomic norm Data rate',True,vistaoutput_path,numScenes)
                 
-                #graph4 = graph_tools.mohamedGraph(fig4, ax4)
-                #fig4,ax4 = graph4.getGraph()
-                #graph4 = graph_tools.InteractiveGraph(fig4,ax4)
-                #fig4,ax4 = graph4.getGraph()
-
-                #graph41 = graph_tools.mohamedGraph(fig41, ax41)
-                #fig41,ax41 = graph41.getGraph()
-                #graph42 = graph_tools.mohamedGraph(fig42, ax42)
-                #fig42,ax42 = graph42.getGraph()
-                #graph43 = graph_tools.mohamedGraph(fig43, ax43)
-                #fig43,ax43 = graph43.getGraph()
-
-                #fig5, ax5, fig51, ax51, fig52, ax52, fig53, ax53 = showDataRateGraph(outmatrix_count,an_data_rate2,\
-                #    an_data_rate2_ave,'Simple method datarate','Data rate of simple voxelization method','distance (m)',\
-                #        'Atomic norm Data rate',True)
-                
-                #graph5 = graph_tools.mohamedGraph(fig5, ax5)
-                #fig5,ax5 = graph5.getGraph()
-                #graph51 = graph_tools.mohamedGraph(fig51, ax51)
-                #fig51,ax51 = graph51.getGraph() 
-                #graph52 = graph_tools.mohamedGraph(fig52, ax52)
-                #fig52,ax52 = graph52.getGraph()
-                #graph53 = graph_tools.mohamedGraph(fig53, ax53)
-                #fig53,ax53 = graph53.getGraph() 
+                fig5, ax5, fig51, ax51, fig52, ax52, fig53, ax53 = graph2.getGraph()
+                fig5.show()
+                fig51.show()
+                fig52.show()
+                fig53.show()
                 
             else:
                 #fig4, ax4, fig42, ax42 = showDataRateGraph(outmatrix_volume,an_data_rate,\
                 #    an_data_rate_ave,'Volume method datarate','Data rate of volumetric voxelization method','distance (m)',\
                 #        'Atomic norm Data rate',False)
 
-                graph1 = graph_tools.InteractiveGraph(outmatrix_volume,an_data_rate,an_data_rate_ave,'Volume method datarate',\
+                graph1 = graph_tools.InteractiveDataRateGraph(outmatrix_volume,an_data_rate,an_data_rate_ave,'Volume method datarate',\
                     'Data rate of volumetric voxelization method','distance (m)','Atomic norm Data rate',False,\
                         vistaoutput_path,numScenes)
                 fig4, ax4, fig42, ax42 = graph1.getGraph()
                 fig4.show()
                 fig42.show()
-                
-                string = input()
-                #graph4 = graph_tools.mohamedGraph(fig4, ax4)
-                #fig4,ax4 = graph4.getGraph()
-                #graph42 = graph_tools.mohamedGraph(fig42, ax42)
-                #fig42,ax42 = graph42.getGraph()
 
-                #fig5, ax5, fig52, ax52, = showDataRateGraph(outmatrix_count,an_data_rate2,\
-                #    an_data_rate2_ave,'Simple method datarate','Data rate of simple voxelization method','distance (m)',\
-                #        'Atomic norm Data rate',True)  
+                graph2 = graph_tools.InteractiveDataRateGraph(outmatrix_count,an_data_rate2,\
+                    an_data_rate2_ave,'Simple method datarate','Data rate of simple voxelization method','distance (m)',\
+                        'Atomic norm Data rate',True,vistaoutput_path,numScenes)  
                 
-                #graph5 = graph_tools.mohamedGraph(fig5, ax5)
-                #fig5,ax5 = graph5.getGraph()
-                #graph52 = graph_tools.mohamedGraph(fig52, ax52)
-                #fig52,ax52 = graph52.getGraph()              
+                fig5, ax5, fig52, ax52 = graph2.getGraph()
+                fig5.show()
+                fig52.show()         
+            
+            #string = input()
             
             graphPrefix = "graph_"
             figPrefix = "fig_"
             axPrefix = "ax_"
             var_num = 1
-            
+            #locals()[graphPrefix + str(i)]
             for i in range(numScenes):
+                locals()[graphPrefix + str(i)] = graph_tools.InteractiveMethodCompareGraph(i,outmatrix_volume,\
+                    outmatrix_count,an_data_rate_ave,an_data_rate2_ave,"Method datarate comparison",\
+                        "Data rate of volumetric voxelization method vs simple voxelization method","distance (m)",\
+                            "Data Rate of volumetric voxelization method",vistaoutput_path)
+                
+                locals()[figPrefix + str(i)], locals()[axPrefix + str(i)] = locals()[graphPrefix + str(i)].getGraph()  
+                locals()[figPrefix + str(i)].show()
+                '''
                 fig, ax = plt.subplots()
                 fig.canvas.manager.set_window_title(f"Method datarate comparison: {graph_tools.get_folder(vistaoutput_path[i])}") 
                 #fig.figure(f"Method datarate comparison: {get_folder(vistaoutput_path[i])}")
@@ -786,31 +592,9 @@ def data_rate_vista_automated(
                 f'g', label=f'Rolling Average of simple method: {graph_tools.get_folder(vistaoutput_path[0])}')  
                 ax.set_xlabel("distance (m)")
                 ax.set_ylabel(f"Data Rate of volumetric voxelization method: {graph_tools.get_folder(vistaoutput_path[i])}")
-                
+                '''
                 #locals()[graphPrefix + str(i)] = graph_tools.mohamedGraph(fig, ax)
-                #locals()[figPrefix + str(i)], locals()[axPrefix + str(i)] = locals()[graphPrefix + str(i)].getGraph()   
-
-                  
-            
-            '''
-            fig7, ax7 = plt.subplots()
-            fig7.canvas.manager.set_window_title(f'Simple vs Volumetric') 
-            fig7.suptitle(f"Simple vs volumetric data rate", fontsize=12)
-            ax7.set_ylabel(f"Data Rate of volumetric voxelization method: {get_folder(vistaoutput_path[0])}",color='r')
-            ax7.tick_params(axis='y', colors='r')
-            
-            #ROLLING AVERAGE
-            ax7.plot(outmatrix_volume[i][:, 0], an_data_rate_ave[i],\
-                f'g', label=f'Rolling Average of volumetric method: {get_folder(vistaoutput_path[0])}')
-            #ROLLING AVERAGE
-            ax7.plot(outmatrix_count[i][:, 0], an_data_rate2_ave[i],\
-                f'g', label=f'Rolling Average of simple method: {get_folder(vistaoutput_path[0])}')  
-            
-            ax7.set_xlabel(f"distance (m)")
-            fig7.legend()
-            fig7.tight_layout()
-            cursor(hover=True)
-            '''
+                #locals()[figPrefix + str(i)], locals()[axPrefix + str(i)] = locals()[graphPrefix + str(i)].getGraph()        
         else:
             #TO UPDATE
             '''
@@ -836,7 +620,7 @@ def data_rate_vista_automated(
             #plt.show()    
             '''    
     #cursor(hover=True)
-    #plt.show()
+    string = input()
 
 def main():
     args = file_tools.parse_cmdline_args()
